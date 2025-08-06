@@ -9,7 +9,7 @@ jobs:
     name: cargo build
     strategy:
       matrix:
-        os: [ubuntu, macos]
+        os: [ubuntu, macos, windows]
         args: ["", "--no-default-features"]
     runs-on: ${{ matrix.os }}-latest
     steps:
