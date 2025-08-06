@@ -1,8 +1,9 @@
 # readpassphrase-3
 
-This crate endeavors to expose a thin wrapper around the OpenBSD [`readpassphrase(3)`][0] function. Two interfaces are exposed:
+This crate endeavors to expose a thin wrapper around the OpenBSD [`readpassphrase(3)`][0] function. Three interfaces are exposed:
 1. `readpassphrase`, which allocates and returns its own fixed-size buffer for the passphrase; and
 2. `readpassphrase_buf`, which takes a preallocated buffer that it consumes and returns as the output `String`.
+3. `readpassphrase_inplace`, which takes a buffer as a byte slice and returns a `&str` in that buffer.
 
 These may be customized using `RppFlags`, which expose the original API’s flags using the [bitflags][1] library.
 

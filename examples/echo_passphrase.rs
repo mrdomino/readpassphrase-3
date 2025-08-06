@@ -6,7 +6,7 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010 Todd
 // C. Miller.
 
-use readpassphrase_2::{RppFlags, readpassphrase};
+use readpassphrase_3::{RppFlags, readpassphrase};
 
 fn main() {
     let password =

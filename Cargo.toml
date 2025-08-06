@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
@@ -9,10 +9,13 @@ license-file = "LICENSE"
 keywords = ["tty", "passphrase", "password"]
 categories = ["command-line-interface"]
 
+[features]
+default = ["zeroize"]
+
 [dependencies]
 bitflags = "2"
 thiserror = { version = "2", default-features = false }
-zeroize = "1"
+zeroize = { version = "1", optional = true }
 
 [build-dependencies]
 cc = "1"

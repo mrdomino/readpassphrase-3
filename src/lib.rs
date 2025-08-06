@@ -6,10 +6,15 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010 Todd
 // C. Miller.
 
-use std::{ffi::CStr, io, mem, str::Utf8Error};
+use std::{
+    ffi::{CStr, FromBytesUntilNulError},
+    io, mem,
+    str::Utf8Error,
+};
 
 use bitflags::bitflags;
 use thiserror::Error;
+#[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
 
 const PASSWORD_LEN: usize = 256;
@@ -46,6 +51,8 @@ pub enum Error {
     IoError(#[from] io::Error),
     #[error(transparent)]
     Utf8Error(#[from] Utf8Error),
+    #[error(transparent)]
+    CStrError(#[from] FromBytesUntilNulError),
 }
 
 /// Reads a passphrase using `readpassphrase(3)`, returning it as a `String`.
@@ -58,7 +65,12 @@ pub fn readpassphrase(prompt: &CStr, flags: RppFlags) -> Result<String, Error> {
 /// Reads a passphrase using `readpassphrase(3)` into the passed buffer.
 /// Returns a `String` consisting of the same memory from the buffer, or
 /// else zeroes the buffer on error.
-pub fn readpassphrase_buf(prompt: &CStr, buf: Vec<u8>, flags: RppFlags) -> Result<String, Error> {
+pub fn readpassphrase_buf(
+    prompt: &CStr,
+    #[allow(unused_mut)] mut buf: Vec<u8>,
+    flags: RppFlags,
+) -> Result<String, Error> {
+    #[cfg(feature = "zeroize")]
     let mut buf = Zeroizing::new(buf);
     unsafe {
         let res = ffi::readpassphrase(
@@ -78,6 +90,29 @@ pub fn readpassphrase_buf(prompt: &CStr, buf: Vec<u8>, flags: RppFlags) -> Resul
     buf.truncate(nul_pos);
     let _ = str::from_utf8(&buf)?;
     Ok(unsafe { String::from_utf8_unchecked(mem::take(&mut buf)) })
+}
+
+/// Reads a passphrase using `readpassphrase(3)` info the passed buffer.
+/// Returns a string slice from that buffer. Does not zero memory; this
+/// should be done out of band, for example by using `Zeroizing<Vec<u8>>`.
+pub fn readpassphrase_inplace<'a>(
+    prompt: &CStr,
+    buf: &'a mut [u8],
+    flags: RppFlags,
+) -> Result<&'a str, Error> {
+    unsafe {
+        let res = ffi::readpassphrase(
+            prompt.as_ptr(),
+            buf.as_mut_ptr().cast(),
+            buf.len(),
+            flags.bits(),
+        );
+        if res.is_null() {
+            return Err(io::Error::last_os_error().into());
+        }
+    }
+    let res = CStr::from_bytes_until_nul(buf)?;
+    Ok(res.to_str()?)
 }
 
 mod ffi {
