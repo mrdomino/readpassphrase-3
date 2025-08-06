@@ -156,6 +156,16 @@ impl From<FromBytesUntilNulError> for Error {
     }
 }
 
+impl core::error::Error for Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Error::Io(e) => Some(e),
+            Error::Utf8(e) => Some(e),
+            Error::CStr(e) => Some(e),
+        }
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
