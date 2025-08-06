@@ -6,7 +6,7 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
 
-use readpassphrase_3::{RppFlags, readpassphrase_inplace};
+use readpassphrase_3::{RppFlags, readpassphrase};
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
 
@@ -15,7 +15,7 @@ fn main() {
     let mut buf = vec![0u8; 256];
     #[cfg(feature = "zeroize")]
     let mut buf = Zeroizing::new(buf);
-    let password = readpassphrase_inplace(
+    let password = readpassphrase(
         c"Password: ",
         &mut buf,
         RppFlags::FORCEUPPER | RppFlags::ECHO_ON,

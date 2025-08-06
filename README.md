@@ -1,9 +1,9 @@
 # readpassphrase-3
 
 This crate endeavors to expose a thin Rust wrapper around the OpenBSD [`readpassphrase(3)`][0] function. Three interfaces are exposed:
-1. `readpassphrase`, which allocates and returns its own fixed-size buffer for the passphrase;
-2. `readpassphrase_buf`, which takes a preallocated buffer that it consumes and returns as the output `String`; and
-3. `readpassphrase_inplace`, which takes a buffer as a byte slice and returns a `&str` in that buffer.
+1. `getpass`, which allocates and returns its own fixed-size buffer for the passphrase;
+2. `readpassphrase`, which takes a buffer as a byte slice and returns a `&str` in that buffer; and
+3. `readpassphrase_owned`, which takes a preallocated buffer that it consumes and returns as the output `String`.
 
 These may be customized using `RppFlags`, which expose the original API’s flags.
 
@@ -18,10 +18,10 @@ That’s not a question, but it’s okay. You are probably passing a Rust `&str`
 If you’re passing a literal string, you can just prepend `c` to your string:
 
 ```rust
-let _ = readpassphrase(c"Prompt: ", RppFlags::default())?;
-//                     ^
-//                     |
-//                     like this
+let _ = getpass(c"Prompt: ")?;
+//              ^
+//              |
+//              like this
 ```
 
 ## Why is this named `readpassphrase-3`?

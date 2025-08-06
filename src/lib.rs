@@ -6,16 +6,28 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
 
+//! This library endeavors to expose a thin wrapper around OpenBSD’s [`readpassphrase(3)`][0]
+//! function.
+//!
+//! Three different interfaces are exposed; for most purposes, you will want to use either
+//! [`getpass`] (for simple password entry) or [`readpassphrase`] (when you need flags from
+//! `readpassphrase(3)` or need more control over the memory.)
+//!
+//! The [`readpassphrase_owned`] function is a bit more niche; it may be used when you need a
+//! [`String`] output but need to pass flags or control the buffer size (vs [`getpass`].)
+//!
+//! [0]: https://man.openbsd.org/readpassphrase
+
 use std::{
     ffi::{CStr, FromBytesUntilNulError},
     fmt::Display,
-    io, mem,
+    io,
     str::Utf8Error,
 };
 
 use bitflags::bitflags;
 #[cfg(feature = "zeroize")]
-use zeroize::Zeroizing;
+use zeroize::Zeroize;
 
 pub const PASSWORD_LEN: usize = 256;
 
@@ -52,73 +64,22 @@ pub enum Error {
     CStr(FromBytesUntilNulError),
 }
 
-/// Reads a passphrase using `readpassphrase(3)`, returning it as a `String`.
-/// Internally uses a buffer of `PASSWORD_LEN` bytes, allowing for passwords
-/// up to `PASSWORD_LEN - 1` characters (including the null terminator.)
+/// Reads a passphrase using `readpassphrase(3)`.
 ///
 /// # Security
-/// The returned `String` is not cleared on success; it is the caller’s
-/// responsibility to do so, e.g.:
-///
+/// The passed buffer might contain sensitive data, even if this function returns an error (for
+/// example, if the contents are not valid UTF-8.) It is often considered good practice to zero
+/// this memory after you’re done with it, for example by using [`zeroize`]:
 /// ```no_run
-/// # use readpassphrase_3::{Error, RppFlags, readpassphrase};
-/// # use zeroize::Zeroizing;
-/// # fn main() -> Result<(), Error> {
-/// let pass = Zeroizing::new(readpassphrase(c"Pass: ", RppFlags::default())?);
-/// # Ok(())
-/// # }
-/// ```
-pub fn readpassphrase(prompt: &CStr, flags: RppFlags) -> Result<String, Error> {
-    readpassphrase_buf(prompt, vec![0u8; PASSWORD_LEN], flags)
-}
-
-/// Reads a passphrase using `readpassphrase(3)` into the passed buffer.
-/// Returns a `String` consisting of the same memory from the buffer. If
-/// the `zeroize` feature is enabled (which it is by default), memory is
-/// cleared on errors.
-///
-/// # Security
-/// The returned `String` is not cleared on success; it is the caller’s
-/// responsibility to do so, e.g.:
-///
-/// ```no_run
-/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase_buf};
-/// # use zeroize::Zeroizing;
-/// # fn main() -> Result<(), Error> {
-/// let buf = vec![0u8; PASSWORD_LEN];
-/// let pass = Zeroizing::new(readpassphrase_buf(c"Pass: ", buf, RppFlags::default())?);
-/// # Ok(())
-/// # }
-/// ```
-pub fn readpassphrase_buf(
-    prompt: &CStr,
-    #[allow(unused_mut)] mut buf: Vec<u8>,
-    flags: RppFlags,
-) -> Result<String, Error> {
-    #[cfg(feature = "zeroize")]
-    let mut buf = Zeroizing::new(buf);
-    let res = readpassphrase_inplace(prompt, &mut buf, flags)?;
-    let len = res.len();
-    buf.truncate(len);
-    Ok(unsafe { String::from_utf8_unchecked(mem::take(&mut buf)) })
-}
-
-/// Reads a passphrase using `readpassphrase(3)` into the passed buffer.
-/// Returns a string slice from that buffer.
-///
-/// # Security
-/// Does not zero memory; this should be done out of band, for example by
-/// using `Zeroizing<Vec<u8>>`:
-/// ```no_run
-/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase_inplace};
-/// # use zeroize::Zeroizing;
+/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase};
+/// use zeroize::Zeroizing;
 /// # fn main() -> Result<(), Error> {
 /// let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
-/// let pass = readpassphrase_inplace(c"Pass: ", &mut buf, RppFlags::default())?;
+/// let pass = readpassphrase(c"Pass: ", &mut buf, RppFlags::default())?;
 /// # Ok(())
 /// # }
 /// ```
-pub fn readpassphrase_inplace<'a>(
+pub fn readpassphrase<'a>(
     prompt: &CStr,
     buf: &'a mut [u8],
     flags: RppFlags,
@@ -134,8 +95,79 @@ pub fn readpassphrase_inplace<'a>(
             return Err(io::Error::last_os_error().into());
         }
     }
-    let res = CStr::from_bytes_until_nul(buf)?;
-    Ok(res.to_str()?)
+    Ok(CStr::from_bytes_until_nul(buf)?.to_str()?)
+}
+
+/// Reads a passphrase using `readpassphrase(3)`, returning it as a [`String`].
+///
+/// Internally, this function uses a buffer of [`PASSWORD_LEN`] bytes, allowing for passwords up to
+/// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) The passed flags are
+/// always the defaults, i.e., [`RppFlags::ECHO_OFF`].
+///
+/// # Security
+/// If the [`zeroize`] feature of this crate is disabled, then this function can leak sensitive
+/// data on failure, e.g. if the entered passphrase is not valid UTF-8. There is no way around this
+/// (other than using the default `zeroize` feature), so if you must turn that feature off and are
+/// concerned about this, then you should use the [`readpassphrase`] function instead.
+///
+/// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
+/// to clear it when you are done with it, for example by using [`zeroize`]:
+/// ```no_run
+/// # use readpassphrase_3::{Error, getpass};
+/// use zeroize::Zeroizing;
+/// # fn main() -> Result<(), Error> {
+/// let pass = Zeroizing::new(getpass(c"Pass: ")?);
+/// # Ok(())
+/// # }
+/// ```
+pub fn getpass(prompt: &CStr) -> Result<String, Error> {
+    #[allow(unused_mut, unused_variables)]
+    readpassphrase_owned(prompt, vec![0u8; PASSWORD_LEN], RppFlags::empty()).map_err(
+        |(e, mut buf)| {
+            #[cfg(feature = "zeroize")]
+            buf.zeroize();
+            e
+        },
+    )
+}
+
+/// Reads a passphrase using `readpassphrase(3)` using the passed buffer’s memory.
+///
+/// The returned [`String`] uses `buf`’s memory; on failure, this memory is returned to the caller in
+/// the second argument of the `Err` tuple.
+///
+/// # Security
+/// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
+/// to clear it when you are done with it. You may also wish to zero the returned buffer on error,
+/// as it may still contain sensitive data, for example if the password was not valid UTF-8.
+///
+/// This can be done via [`zeroize`], e.g.:
+/// ```no_run
+/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase_owned};
+/// use zeroize::{Zeroizing, Zeroize};
+/// # fn main() -> Result<(), Error> {
+/// let buf = vec![0u8; PASSWORD_LEN];
+/// let pass = Zeroizing::new(
+///     readpassphrase_owned(c"Pass: ", buf, RppFlags::default())
+///         .map_err(|(e, mut buf)| { buf.zeroize(); e })?
+/// );
+/// # Ok(())
+/// # }
+/// ```
+pub fn readpassphrase_owned(
+    prompt: &CStr,
+    #[allow(unused_mut)] mut buf: Vec<u8>,
+    flags: RppFlags,
+) -> Result<String, (Error, Vec<u8>)> {
+    match readpassphrase(prompt, &mut buf, flags) {
+        Ok(res) => {
+            let len = res.len();
+            buf.truncate(len);
+            Ok(unsafe { String::from_utf8_unchecked(buf) })
+        }
+
+        Err(e) => Err((e, buf)),
+    }
 }
 
 impl From<io::Error> for Error {
