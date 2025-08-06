@@ -48,10 +48,16 @@ pub enum Error {
     Utf8Error(#[from] Utf8Error),
 }
 
+/// Reads a passphrase using `readpassphrase(3)`, returning it as a `String`.
+/// Internally uses a buffer of `PASSWORD_LEN` bytes, allowing for passwords
+/// up to `PASSWORD_LEN - 1` characters (including the null terminator.)
 pub fn readpassphrase(prompt: &CStr, flags: RppFlags) -> Result<String, Error> {
     readpassphrase_buf(prompt, vec![0u8; PASSWORD_LEN], flags)
 }
 
+/// Reads a passphrase using `readpassphrase(3)` into the passed buffer.
+/// Returns a `String` consisting of the same memory from the buffer, or
+/// else zeroes the buffer on error.
 pub fn readpassphrase_buf(prompt: &CStr, buf: Vec<u8>, flags: RppFlags) -> Result<String, Error> {
     let mut buf = Zeroizing::new(buf);
     unsafe {
