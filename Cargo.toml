@@ -14,7 +14,6 @@ default = ["zeroize"]
 
 [dependencies]
 bitflags = "2"
-thiserror = { version = "2", default-features = false }
 zeroize = { version = "1", optional = true }
 
 [build-dependencies]

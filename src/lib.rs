@@ -7,13 +7,10 @@
 // Todd C. Miller.
 
 use std::{
-    ffi::{CStr, FromBytesUntilNulError},
-    io, mem,
-    str::Utf8Error,
+    ffi::{CStr, FromBytesUntilNulError}, fmt::Display, io, mem, str::Utf8Error
 };
 
 use bitflags::bitflags;
-use thiserror::Error;
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
 
@@ -45,14 +42,11 @@ impl Default for RppFlags {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum Error {
-    #[error(transparent)]
-    IoError(#[from] io::Error),
-    #[error(transparent)]
-    Utf8Error(#[from] Utf8Error),
-    #[error(transparent)]
-    CStrError(#[from] FromBytesUntilNulError),
+    Io(io::Error),
+    Utf8(Utf8Error),
+    CStr(FromBytesUntilNulError),
 }
 
 /// Reads a passphrase using `readpassphrase(3)`, returning it as a `String`.
@@ -113,6 +107,34 @@ pub fn readpassphrase_inplace<'a>(
     }
     let res = CStr::from_bytes_until_nul(buf)?;
     Ok(res.to_str()?)
+}
+
+impl From<io::Error> for Error {
+    fn from(value: io::Error) -> Self {
+        Error::Io(value)
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(value: Utf8Error) -> Self {
+        Error::Utf8(value)
+    }
+}
+
+impl From<FromBytesUntilNulError> for Error {
+    fn from(value: FromBytesUntilNulError) -> Self {
+        Error::CStr(value)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Io(e) => e.fmt(f),
+            Error::Utf8(e) => e.fmt(f),
+            Error::CStr(e) => e.fmt(f),
+        }
+    }
 }
 
 mod ffi {
