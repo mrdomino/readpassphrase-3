@@ -30,7 +30,15 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-#include <readpassphrase.h>
+#include "readpassphrase.h"
+
+#ifndef TCSASOFT
+#define TCSASOFT 0
+#endif
+
+#ifndef _NSIG
+#define _NSIG NSIG
+#endif
 
 static volatile sig_atomic_t signo[_NSIG];
 
@@ -81,8 +89,10 @@ restart:
 		memcpy(&term, &oterm, sizeof(term));
 		if (!(flags & RPP_ECHO_ON))
 			term.c_lflag &= ~(ECHO | ECHONL);
+#ifdef VSTATUS
 		if (term.c_cc[VSTATUS] != _POSIX_VDISABLE)
 			term.c_cc[VSTATUS] = _POSIX_VDISABLE;
+#endif
 		(void)tcsetattr(input, TCSAFLUSH|TCSASOFT, &term);
 	} else {
 		memset(&term, 0, sizeof(term));
@@ -175,8 +185,8 @@ restart:
 		errno = save_errno;
 	return(nr == -1 ? NULL : buf);
 }
-DEF_WEAK(readpassphrase);
 
+#if 0
 char *
 getpass(const char *prompt)
 {
@@ -184,6 +194,7 @@ getpass(const char *prompt)
 
 	return(readpassphrase(prompt, buf, sizeof(buf), RPP_ECHO_OFF));
 }
+#endif
 
 static void handler(int s)
 {
