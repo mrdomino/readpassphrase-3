@@ -36,6 +36,10 @@ There is already an unmaintained [readpassphrase][6] crate that was not to my li
 Rather than try to invent a new name for this standard C function, I decided to pick a number.
 The number I picked, 3, corresponds to the [“library calls” man section][7], in which readpassphrase’s man page is located.
 
+## Will this ever support Windows?
+
+Probably not.
+
 [0]: https://man.openbsd.org/readpassphrase
 [1]: https://crates.io/crates/bitflags
 [2]: https://docs.rs/thiserror/latest/thiserror/
