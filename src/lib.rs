@@ -82,10 +82,11 @@ pub fn readpassphrase(prompt: &CStr, flags: RppFlags) -> Result<String, Error> {
 /// responsibility to do so, e.g.:
 ///
 /// ```no_run
-/// # use readpassphrase_3::{Error, RppFlags, readpassphrase};
+/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase_buf};
 /// # use zeroize::Zeroizing;
 /// # fn main() -> Result<(), Error> {
-/// let pass = Zeroizing::new(readpassphrase(c"Pass: ", RppFlags::default())?);
+/// let buf = vec![0u8; PASSWORD_LEN];
+/// let pass = Zeroizing::new(readpassphrase_buf(c"Pass: ", buf, RppFlags::default())?);
 /// # Ok(())
 /// # }
 /// ```
@@ -117,10 +118,11 @@ pub fn readpassphrase_buf(
 }
 
 /// Reads a passphrase using `readpassphrase(3)` info the passed buffer.
-/// Returns a string slice from that buffer. Does not zero memory; this
-/// should be done out of band, for example by using `Zeroizing<Vec<u8>>`.
-/// For example:
+/// Returns a string slice from that buffer.
 ///
+/// # Security
+/// Does not zero memory; this should be done out of band, for example by
+/// using `Zeroizing<Vec<u8>>`:
 /// ```no_run
 /// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase_inplace};
 /// # use zeroize::Zeroizing;
