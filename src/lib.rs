@@ -97,23 +97,9 @@ pub fn readpassphrase_buf(
 ) -> Result<String, Error> {
     #[cfg(feature = "zeroize")]
     let mut buf = Zeroizing::new(buf);
-    unsafe {
-        let res = ffi::readpassphrase(
-            prompt.as_ptr(),
-            buf.as_mut_ptr().cast(),
-            buf.len(),
-            flags.bits(),
-        );
-        if res.is_null() {
-            return Err(io::Error::last_os_error().into());
-        }
-    }
-    let nul_pos = buf
-        .iter()
-        .position(|&b| b == 0)
-        .ok_or(io::Error::from(io::ErrorKind::InvalidData))?;
-    buf.truncate(nul_pos);
-    let _ = str::from_utf8(&buf)?;
+    let res = readpassphrase_inplace(prompt, &mut buf, flags)?;
+    let len = res.len();
+    buf.truncate(len);
     Ok(unsafe { String::from_utf8_unchecked(mem::take(&mut buf)) })
 }
 
