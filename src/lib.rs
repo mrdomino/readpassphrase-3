@@ -17,7 +17,7 @@ use bitflags::bitflags;
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
 
-const PASSWORD_LEN: usize = 256;
+pub const PASSWORD_LEN: usize = 256;
 
 bitflags! {
     /// Flags for controlling readpassphrase
@@ -55,13 +55,40 @@ pub enum Error {
 /// Reads a passphrase using `readpassphrase(3)`, returning it as a `String`.
 /// Internally uses a buffer of `PASSWORD_LEN` bytes, allowing for passwords
 /// up to `PASSWORD_LEN - 1` characters (including the null terminator.)
+///
+/// # Security
+/// The returned `String` is not cleared on success; it is the caller’s
+/// responsibility to do so, e.g.:
+///
+/// ```no_run
+/// # use readpassphrase_3::{Error, RppFlags, readpassphrase};
+/// # use zeroize::Zeroizing;
+/// # fn main() -> Result<(), Error> {
+/// let pass = Zeroizing::new(readpassphrase(c"Pass: ", RppFlags::default())?);
+/// # Ok(())
+/// # }
+/// ```
 pub fn readpassphrase(prompt: &CStr, flags: RppFlags) -> Result<String, Error> {
     readpassphrase_buf(prompt, vec![0u8; PASSWORD_LEN], flags)
 }
 
 /// Reads a passphrase using `readpassphrase(3)` into the passed buffer.
-/// Returns a `String` consisting of the same memory from the buffer, or
-/// else zeroes the buffer on error.
+/// Returns a `String` consisting of the same memory from the buffer. If
+/// the `zeroize` feature is enabled (which it is by default), memory is
+/// cleared on errors.
+///
+/// # Security
+/// The returned `String` is not cleared on success; it is the caller’s
+/// responsibility to do so, e.g.:
+///
+/// ```no_run
+/// # use readpassphrase_3::{Error, RppFlags, readpassphrase};
+/// # use zeroize::Zeroizing;
+/// # fn main() -> Result<(), Error> {
+/// let pass = Zeroizing::new(readpassphrase(c"Pass: ", RppFlags::default())?);
+/// # Ok(())
+/// # }
+/// ```
 pub fn readpassphrase_buf(
     prompt: &CStr,
     #[allow(unused_mut)] mut buf: Vec<u8>,
@@ -92,6 +119,17 @@ pub fn readpassphrase_buf(
 /// Reads a passphrase using `readpassphrase(3)` info the passed buffer.
 /// Returns a string slice from that buffer. Does not zero memory; this
 /// should be done out of band, for example by using `Zeroizing<Vec<u8>>`.
+/// For example:
+///
+/// ```no_run
+/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase_inplace};
+/// # use zeroize::Zeroizing;
+/// # fn main() -> Result<(), Error> {
+/// let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
+/// let pass = readpassphrase_inplace(c"Pass: ", &mut buf, RppFlags::default())?;
+/// # Ok(())
+/// # }
+/// ```
 pub fn readpassphrase_inplace<'a>(
     prompt: &CStr,
     buf: &'a mut [u8],
