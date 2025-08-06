@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
@@ -8,6 +8,12 @@ repository = "https://github.com/mrdomino/readpassphrase-3"
 license-file = "LICENSE"
 keywords = ["tty", "passphrase", "password"]
 categories = ["command-line-interface"]
+
+exclude = [
+  ".githooks/*",
+  ".github/**",
+  ".gitignore",
+]
 
 [features]
 default = ["zeroize"]
