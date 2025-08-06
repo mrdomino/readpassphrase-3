@@ -31,7 +31,6 @@
 #define _PATH_TTY "/dev/tty"
 #endif
 
-#include <pwd.h>
 #include <signal.h>
 #include <string.h>
 #include <termios.h>
