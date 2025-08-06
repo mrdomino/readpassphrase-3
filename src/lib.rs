@@ -7,7 +7,10 @@
 // Todd C. Miller.
 
 use std::{
-    ffi::{CStr, FromBytesUntilNulError}, fmt::Display, io, mem, str::Utf8Error
+    ffi::{CStr, FromBytesUntilNulError},
+    fmt::Display,
+    io, mem,
+    str::Utf8Error,
 };
 
 use bitflags::bitflags;
