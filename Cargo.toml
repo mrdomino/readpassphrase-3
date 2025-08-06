@@ -2,6 +2,12 @@
 name = "readpassphrase-2"
 version = "0.1.0"
 edition = "2024"
+description = "Simple wrapper around readpassphrase(3)"
+readme = "README.md"
+repository = "https://github.com/mrdomino/readpassphrase-2"
+license-file = "LICENSE"
+keywords = ["tty", "passphrase", "password"]
+categories = ["command-line-interface"]
 
 [dependencies]
 bitflags = "2.9.1"
