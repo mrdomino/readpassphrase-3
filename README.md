@@ -7,7 +7,7 @@ This crate endeavors to expose a thin wrapper around the OpenBSD [`readpassphras
 
 These may be customized using `RppFlags`, which expose the original API’s flags.
 
-This library uses a couple of third-party dependencies: `RppFlags` is implemented via the [bitflags][1] library, and memory zeroing is by default done via [zeroize][3]. To try to reduce churn in this library itself, and dependencies on multiple versions of libraries in dependent packages, we do not lock the versions of these dependencies; it is recommended that you vet their current versions yourself to guard against software supply chain attacks. If you would rather not do that, consider instead using the excellent [rpassword][4] crate, which vendors its own dependencies.
+This library uses a couple of third-party dependencies: `RppFlags` is implemented via the [bitflags][1] library, and memory zeroing is by default done via [zeroize][3]. To try to reduce churn in this library itself, and dependencies on multiple versions of libraries in dependent packages, we do not lock the versions of these dependencies; it is recommended that you vet their current versions yourself to guard against software supply chain attacks. If you would rather not do that, consider instead using the excellent [rpassword][4] crate, which vendors its own dependencies (and supports Windows!)
 
 # NFAQ
 
