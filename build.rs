@@ -8,7 +8,7 @@
 
 fn main() {
     cc::Build::new()
-        .file("c_lib/readpassphrase.c")
+        .file("csrc/readpassphrase.c")
         .include("csrc")
         .compile("readpassphrase");
     println!("cargo:rerun-if-changed=csrc/readpassphrase.c");
