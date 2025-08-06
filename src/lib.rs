@@ -117,7 +117,7 @@ pub fn readpassphrase_buf(
     Ok(unsafe { String::from_utf8_unchecked(mem::take(&mut buf)) })
 }
 
-/// Reads a passphrase using `readpassphrase(3)` info the passed buffer.
+/// Reads a passphrase using `readpassphrase(3)` into the passed buffer.
 /// Returns a string slice from that buffer.
 ///
 /// # Security
