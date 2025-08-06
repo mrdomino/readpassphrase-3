@@ -24,7 +24,13 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+
+#ifndef _MSC_VER
 #include <paths.h>
+#else
+#define _PATH_TTY "/dev/tty"
+#endif
+
 #include <pwd.h>
 #include <signal.h>
 #include <string.h>
