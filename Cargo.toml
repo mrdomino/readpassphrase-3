@@ -10,9 +10,9 @@ keywords = ["tty", "passphrase", "password"]
 categories = ["command-line-interface"]
 
 [dependencies]
-bitflags = "2.9.1"
-thiserror = { version = "2.0.12", default-features = false }
-zeroize = "1.8.1"
+bitflags = "2"
+thiserror = { version = "2", default-features = false }
+zeroize = "1"
 
 [build-dependencies]
-cc = "1.2.31"
+cc = "1"
