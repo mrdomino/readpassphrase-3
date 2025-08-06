@@ -1,0 +1,12 @@
+[package]
+name = "readpassphrase-2"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitflags = "2.9.1"
+thiserror = { version = "2.0.12", default-features = false }
+zeroize = "1.8.1"
+
+[build-dependencies]
+cc = "1.2.31"
