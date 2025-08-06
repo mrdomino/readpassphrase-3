@@ -10,7 +10,7 @@ keywords = ["tty", "passphrase", "password"]
 categories = ["command-line-interface"]
 
 exclude = [
-    ".githooks/*",
+    ".githook/*",
     ".github/**",
     ".gitignore",
 ]
