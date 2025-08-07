@@ -156,7 +156,7 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 /// ```
 pub fn readpassphrase_owned(
     prompt: &CStr,
-    #[allow(unused_mut)] mut buf: Vec<u8>,
+    mut buf: Vec<u8>,
     flags: RppFlags,
 ) -> Result<String, (Error, Vec<u8>)> {
     match readpassphrase(prompt, &mut buf, flags) {
