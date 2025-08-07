@@ -34,7 +34,7 @@ pub const PASSWORD_LEN: usize = 256;
 bitflags! {
     /// Flags for controlling readpassphrase
     pub struct RppFlags: i32 {
-        /// Furn off echo (default)
+        /// Turn off echo (default)
         const ECHO_OFF    = 0x00;
         /// Leave echo on
         const ECHO_ON     = 0x01;
