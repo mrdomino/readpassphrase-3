@@ -21,7 +21,7 @@
 use std::{
     ffi::{CStr, FromBytesUntilNulError},
     fmt::Display,
-    io,
+    io, mem,
     str::Utf8Error,
 };
 
@@ -142,16 +142,16 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 
 /// Reads a passphrase using `readpassphrase(3)` using the passed buffer’s memory.
 ///
-/// This function reads a passphrase of up to `buf.len() - 1` bytes. If the entered passphrase is
-/// longer, it will be truncated.
+/// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
+/// is longer, it will be truncated.
 ///
-/// The returned [`String`] uses `buf`’s memory; on failure, this memory is returned to the caller in
-/// the second argument of the `Err` tuple.
+/// The returned [`String`] uses `buf`’s memory; on failure, this memory is returned to the caller
+/// in the second argument of the `Err` tuple wifh its length set to 0.
 ///
 /// # Security
-/// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
-/// to clear it when you are done with it. You may also wish to zero the returned buffer on error,
-/// as it may still contain sensitive data, for example if the password was not valid UTF-8.
+/// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
+/// it. It is also the caller’s responsibility to clear the buffer returned on error, as it may
+/// still contain sensitive data, for example if the password was not valid UTF-8.
 ///
 /// This can be done via [`zeroize`], e.g.:
 /// ```no_run
@@ -171,14 +171,30 @@ pub fn readpassphrase_owned(
     mut buf: Vec<u8>,
     flags: RppFlags,
 ) -> Result<String, (Error, Vec<u8>)> {
-    match readpassphrase(prompt, &mut buf, flags) {
-        Ok(res) => {
-            let len = res.len();
-            buf.truncate(len);
-            Ok(unsafe { String::from_utf8_unchecked(buf) })
-        }
+    readpassphrase_mut(prompt, &mut buf, flags).map_err(|e| {
+        buf.truncate(0);
+        (e, buf)
+    })
+}
 
-        Err(e) => Err((e, buf)),
+/// Reads a passphrase into `buf`’s maybe-uninitialized capacity and returns it as a `String`
+/// reusing `buf`’s memory on success. This function serves to make it possible to write
+/// `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
+/// behavior by constructing a maybe-uninitialized slice.
+fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Result<String, Error> {
+    unsafe {
+        let res = ffi::readpassphrase(
+            prompt.as_ptr(),
+            buf.as_mut_ptr().cast(),
+            buf.capacity(),
+            flags.bits(),
+        );
+        if res.is_null() {
+            return Err(io::Error::last_os_error().into());
+        }
+        let res = CStr::from_ptr(res).to_str()?;
+        buf.set_len(res.len());
+        Ok(String::from_utf8_unchecked(mem::take(buf)))
     }
 }
 
