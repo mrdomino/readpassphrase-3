@@ -7,25 +7,19 @@
 // Todd C. Miller.
 
 use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, readpassphrase, readpassphrase_owned};
-use zeroize::{Zeroize, Zeroizing};
 
 fn main() -> Result<(), Error> {
     let mut buf = vec![0u8; PASSWORD_LEN];
-    let pass =
-        Zeroizing::new(readpassphrase(c"Password: ", &mut buf, RppFlags::ECHO_ON)?.to_string());
+    let pass = readpassphrase(c"Password: ", &mut buf, RppFlags::ECHO_ON)?.to_string();
     let mut buf = Some(buf);
     loop {
-        let mut res = readpassphrase_owned(
+        let res = readpassphrase_owned(
             c"Confirmation: ",
             buf.take().unwrap(),
             RppFlags::REQUIRE_TTY,
         )
-        .map_err(|(e, mut buf)| {
-            buf.zeroize();
-            e
-        })?;
+        .map_err(|(e, _)| e)?;
         if *pass == res {
-            res.zeroize();
             break;
         }
         buf = Some(res.into());
