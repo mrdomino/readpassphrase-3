@@ -146,7 +146,7 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 /// is longer, it will be truncated.
 ///
 /// The returned [`String`] uses `buf`’s memory; on failure, this memory is returned to the caller
-/// in the second argument of the `Err` tuple wifh its length set to 0.
+/// in the second argument of the `Err` tuple with its length set to 0.
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
