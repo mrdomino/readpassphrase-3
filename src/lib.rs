@@ -26,8 +26,6 @@ use std::{
 };
 
 use bitflags::bitflags;
-#[cfg(feature = "zeroize")]
-use zeroize::Zeroize;
 
 pub const PASSWORD_LEN: usize = 256;
 
@@ -114,11 +112,6 @@ pub fn readpassphrase<'a>(
 /// The passed flags are always the defaults, i.e., [`RppFlags::ECHO_OFF`].
 ///
 /// # Security
-/// If the [`zeroize`] feature of this crate is disabled, then this function can leak sensitive
-/// data on failure, e.g. if the entered passphrase is not valid UTF-8. There is no way around this
-/// (other than using the default `zeroize` feature), so if you must turn that feature off and are
-/// concerned about this, then you should use the [`readpassphrase`] function instead.
-///
 /// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
 /// to clear it when you are done with it, for example by using [`zeroize`]:
 /// ```no_run
@@ -133,8 +126,7 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
     #[allow(unused_mut, unused_variables)]
     readpassphrase_owned(prompt, vec![0u8; PASSWORD_LEN], RppFlags::empty()).map_err(
         |(e, mut buf)| {
-            #[cfg(feature = "zeroize")]
-            buf.zeroize();
+            explicit_bzero(&mut buf);
             e
         },
     )
@@ -172,7 +164,7 @@ pub fn readpassphrase_owned(
     flags: RppFlags,
 ) -> Result<String, (Error, Vec<u8>)> {
     readpassphrase_mut(prompt, &mut buf, flags).map_err(|e| {
-        buf.truncate(0);
+        buf.clear();
         (e, buf)
     })
 }
@@ -195,6 +187,34 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Resu
         let res = CStr::from_ptr(res).to_str()?;
         buf.set_len(res.len());
         Ok(String::from_utf8_unchecked(mem::take(buf)))
+    }
+}
+
+/// Securely zero the memory in `buf`.
+///
+/// This function clears the full capacity of `buf` by writing zeroes to it, thereby erasing any
+/// sensitive data in `buf`. It should be called to clear any sensitive passphrases once they are
+/// no longer in use.
+///
+/// If the `zeroize` feature is enabled, this internally uses [`zeroize::Zeroize`].
+pub fn explicit_bzero(buf: &mut Vec<u8>) {
+    #[cfg(feature = "zeroize")]
+    {
+        use zeroize::Zeroize;
+        buf.zeroize();
+    }
+    #[cfg(not(feature = "zeroize"))]
+    {
+        buf.clear();
+        buf.spare_capacity_mut()
+            .fill(std::mem::MaybeUninit::zeroed());
+        unsafe {
+            core::arch::asm!(
+                "/* {ptr} */",
+                ptr = in(reg) buf.as_ptr(),
+                options(nostack, readonly, preserves_flags),
+            );
+        }
     }
 }
 
