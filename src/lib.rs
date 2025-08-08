@@ -57,14 +57,21 @@ impl Default for RppFlags {
     }
 }
 
+/// Errors that can occur in readpassphrase
 #[derive(Debug)]
 pub enum Error {
+    /// `readpassphrase(3)` itself encountered an error
     Io(io::Error),
+    /// The entered password did not parse as UTF-8
     Utf8(Utf8Error),
+    /// The buffer did not contain a null terminator
     CStr(FromBytesUntilNulError),
 }
 
 /// Reads a passphrase using `readpassphrase(3)`.
+///
+/// This function reads a passphrase of up to `buf.len() - 1` bytes. If the entered passphrase is
+/// longer, it will be truncated.
 ///
 /// # Security
 /// The passed buffer might contain sensitive data, even if this function returns an error (for
@@ -101,8 +108,10 @@ pub fn readpassphrase<'a>(
 /// Reads a passphrase using `readpassphrase(3)`, returning it as a [`String`].
 ///
 /// Internally, this function uses a buffer of [`PASSWORD_LEN`] bytes, allowing for passwords up to
-/// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) The passed flags are
-/// always the defaults, i.e., [`RppFlags::ECHO_OFF`].
+/// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) If the entered passphrase
+/// is longer, it will be truncated.
+///
+/// The passed flags are always the defaults, i.e., [`RppFlags::ECHO_OFF`].
 ///
 /// # Security
 /// If the [`zeroize`] feature of this crate is disabled, then this function can leak sensitive
@@ -132,6 +141,9 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 }
 
 /// Reads a passphrase using `readpassphrase(3)` using the passed buffer’s memory.
+///
+/// This function reads a passphrase of up to `buf.len() - 1` bytes. If the entered passphrase is
+/// longer, it will be truncated.
 ///
 /// The returned [`String`] uses `buf`’s memory; on failure, this memory is returned to the caller in
 /// the second argument of the `Err` tuple.
