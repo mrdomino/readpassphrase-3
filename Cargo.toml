@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "0.4.4"
+version = "0.5.0"
 edition = "2024"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
