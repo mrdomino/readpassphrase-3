@@ -7,14 +7,10 @@
 // Todd C. Miller.
 
 use readpassphrase_3::{RppFlags, readpassphrase};
-#[cfg(feature = "zeroize")]
 use zeroize::Zeroizing;
 
 fn main() {
-    #[allow(unused_mut)]
-    let mut buf = vec![0u8; 256];
-    #[cfg(feature = "zeroize")]
-    let mut buf = Zeroizing::new(buf);
+    let mut buf = Zeroizing::new(vec![0u8; 256]);
     let password = readpassphrase(
         c"Password: ",
         &mut buf,
