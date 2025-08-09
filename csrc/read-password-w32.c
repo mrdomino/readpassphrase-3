@@ -11,9 +11,10 @@
 
 // Display prompt then read zero-terminated, UTF-8 password.
 // Return password length with terminator, or zero on error.
-static int
-read_password(char *buf, int len, char *prompt)
+char *
+readpassphrase(const char *prompt, char *buf, size_t len, int flags)
 {
+    (void)flags;
     /* Resources that will be cleaned up */
     int pwlen = 0;
     DWORD orig = 0;
@@ -58,7 +59,7 @@ done:
     SetConsoleMode(hi, orig);
     CloseHandle(ho);
     CloseHandle(hi);
-    return pwlen;
+    return pwlen == 0 ? nullptr : buf;
 }
 
 #if 0
