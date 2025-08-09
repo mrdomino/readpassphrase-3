@@ -14,7 +14,9 @@ jobs:
         args: ["", "--no-default-features"]
     runs-on: ${{ matrix.os }}-latest
     steps:
-      - run: |
+      - name: setup environment
+        shell: bash
+        run: |
           if [[ ${{ matrix.os }} = windows ]]; then
             echo suffix=.exe
           else
