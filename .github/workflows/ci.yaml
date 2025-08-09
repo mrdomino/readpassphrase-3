@@ -14,9 +14,20 @@ jobs:
         args: ["", "--no-default-features"]
     runs-on: ${{ matrix.os }}-latest
     steps:
+      - run: |
+          if [[ ${{ matrix.os }} = windows ]]; then
+            echo suffix=.exe
+          else
+            echo suffix=
+          fi >> $GITHUB_ENV
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo build ${{ matrix.args }} --all-targets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pass
+          path: target/debug/examples/pass${{ env.suffix }}
+      - run: cago test ${{ matrix.args }}
 
   lint:
     name: cargo fmt && cargo clippy
