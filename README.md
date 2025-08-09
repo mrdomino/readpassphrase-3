@@ -7,7 +7,7 @@ This crate endeavors to expose a thin Rust wrapper around the OpenBSD [`readpass
 
 These may be customized using `RppFlags`, which expose the original API’s flags.
 
-This library uses a couple of third-party dependencies: `RppFlags` is implemented via the [bitflags][1] library, and memory zeroing is by default done via [zeroize][3]. To try to reduce churn in this library itself, and dependencies on multiple versions of libraries in dependent packages, we do not lock the versions of these dependencies; it is recommended that you vet their current versions yourself to guard against software supply chain attacks. If you would rather not do that, consider instead using the excellent [rpassword][4] crate, which vendors its own dependencies (and supports Windows!)
+This library uses a couple of third-party dependencies: `RppFlags` is implemented via the [bitflags][1] library, native builds are done via [cc][2], and memory zeroing can optionally be done by [zeroize][3]. To try to reduce churn in this library itself, we do not lock the versions of these dependencies; it is recommended that you vet their current versions yourself for compromises or software supply chain attacks. If you would rather not do that, consider instead using the excellent [rpassword][4] crate, which ships without external dependencies.
 
 # NFAQ
 
@@ -30,7 +30,7 @@ There is already an unmaintained [readpassphrase][6] crate that was not to my li
 
 [0]: https://man.openbsd.org/readpassphrase
 [1]: https://crates.io/crates/bitflags
-[2]: https://docs.rs/thiserror/latest/thiserror/
+[2]: https://crates.io/crates/cc
 [3]: https://crates.io/crates/zeroize
 [4]: https://crates.io/crates/rpassword
 [5]: https://doc.rust-lang.org/std/ffi/struct.CStr.html
