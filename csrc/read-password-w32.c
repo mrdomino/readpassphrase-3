@@ -59,7 +59,7 @@ done:
     SetConsoleMode(hi, orig);
     CloseHandle(ho);
     CloseHandle(hi);
-    return pwlen == 0 ? nullptr : buf;
+    return pwlen == 0 ? NULL : buf;
 }
 
 #if 0
