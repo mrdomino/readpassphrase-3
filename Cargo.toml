@@ -15,8 +15,8 @@ exclude = [
     ".gitignore",
 ]
 
-[features]
-default = ["zeroize"]
+[package.metadata.docs.rs]
+features = ["zeroize"]
 
 [dependencies]
 bitflags = "2"
@@ -24,3 +24,6 @@ zeroize = { version = "1", optional = true }
 
 [build-dependencies]
 cc = "1"
+
+[dev-dependencies]
+zeroize = "1"
