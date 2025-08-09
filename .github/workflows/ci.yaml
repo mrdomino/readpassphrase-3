@@ -25,7 +25,7 @@ jobs:
       - run: cargo build ${{ matrix.args }} --all-targets
       - uses: actions/upload-artifact@v4
         with:
-          name: pass
+          name: pass-${{ matrix.os }}
           path: target/debug/examples/pass${{ env.suffix }}
       - run: cago test ${{ matrix.args }}
 
