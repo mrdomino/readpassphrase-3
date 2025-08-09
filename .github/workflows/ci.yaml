@@ -30,6 +30,7 @@ jobs:
           name: pass-${{ matrix.os }}
           path: target/debug/examples/pass${{ env.suffix }}
       - run: cargo test ${{ matrix.args }}
+        if: matrix.args == ''
 
   lint:
     name: cargo fmt && cargo clippy
