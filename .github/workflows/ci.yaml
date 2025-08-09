@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu, macos, windows]
-        args: ["", "--no-default-features"]
+        args: ["", "--features=zeroize"]
     runs-on: ${{ matrix.os }}-latest
     steps:
       - name: setup environment
@@ -30,7 +30,7 @@ jobs:
           name: pass-${{ matrix.os }}${{ matrix.args }}
           path: target/debug/examples/pass${{ env.suffix }}
       - run: cargo test ${{ matrix.args }}
-        if: matrix.args == ''
+        if: matrix.args == '--features=zeroize'
 
   lint:
     name: cargo fmt && cargo clippy
