@@ -29,7 +29,7 @@ jobs:
         with:
           name: pass-${{ matrix.os }}
           path: target/debug/examples/pass${{ env.suffix }}
-      - run: cago test ${{ matrix.args }}
+      - run: cargo test ${{ matrix.args }}
 
   lint:
     name: cargo fmt && cargo clippy
