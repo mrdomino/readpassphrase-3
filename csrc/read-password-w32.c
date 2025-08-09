@@ -1,3 +1,9 @@
+/* Author: Chris Wellons
+ * <https://nullprogram.com/blog/2020/05/04>
+ *
+ * This file is in the public domain.
+ */
+
 /* UTF-8 console password prompt for Windows
  * This is free and unencumbered software released into the public domain.
  */
@@ -55,6 +61,7 @@ done:
     return pwlen;
 }
 
+#if 0
 #include <stdio.h>
 
 int
@@ -75,3 +82,4 @@ main(void)
         return 1;
     }
 }
+#endif
