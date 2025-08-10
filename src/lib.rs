@@ -200,7 +200,6 @@ pub fn readpassphrase<'a>(
 /// # }
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
-    #[allow(unused_mut, unused_variables)]
     readpassphrase_owned(prompt, vec![0u8; PASSWORD_LEN], RppFlags::empty()).map_err(zero_b)
 }
 
