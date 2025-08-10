@@ -83,12 +83,7 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{
-    ffi::{CStr, FromBytesUntilNulError},
-    fmt::Display,
-    io, mem,
-    str::Utf8Error,
-};
+use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 
 use bitflags::bitflags;
 use zeroize::Zeroize;
@@ -137,11 +132,15 @@ pub enum Error {
     Io(io::Error),
     /// The entered password did not parse as UTF-8
     Utf8(Utf8Error),
-    /// The buffer did not contain a null terminator
-    CStr(FromBytesUntilNulError),
 }
 
 /// Reads a passphrase using `readpassphrase(3)`.
+///
+/// This function tries to faithfully wrap `readpassphrase(3)` without overhead; the only
+/// additional work it does is:
+/// 1. It converts from a Rust byte slice to a C pointer/length pair going in.
+/// 2. It converts from a C `char *` to a Rust UTF-8 `&str` coming out.
+/// 3. It translates errors from `errno` (or string conversion) into [`Result`].
 ///
 /// This function reads a passphrase of up to `buf.len() - 1` bytes. If the entered passphrase is
 /// longer, it will be truncated.
@@ -177,7 +176,7 @@ pub fn readpassphrase<'a>(
             return Err(io::Error::last_os_error().into());
         }
     }
-    Ok(CStr::from_bytes_until_nul(buf)?.to_str()?)
+    Ok(CStr::from_bytes_until_nul(buf).unwrap().to_str()?)
 }
 
 /// Reads a passphrase using `readpassphrase(3)`, returning it as a [`String`].
@@ -295,18 +294,11 @@ impl From<Utf8Error> for Error {
     }
 }
 
-impl From<FromBytesUntilNulError> for Error {
-    fn from(value: FromBytesUntilNulError) -> Self {
-        Error::CStr(value)
-    }
-}
-
 impl core::error::Error for Error {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             Error::Io(e) => Some(e),
             Error::Utf8(e) => Some(e),
-            Error::CStr(e) => Some(e),
         }
     }
 }
@@ -316,7 +308,6 @@ impl Display for Error {
         match self {
             Error::Io(e) => e.fmt(f),
             Error::Utf8(e) => e.fmt(f),
-            Error::CStr(e) => e.fmt(f),
         }
     }
 }
