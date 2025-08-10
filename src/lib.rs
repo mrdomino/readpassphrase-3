@@ -130,7 +130,7 @@ bitflags! {
 pub enum Error {
     /// `readpassphrase(3)` itself encountered an error
     Io(io::Error),
-    /// The entered password did not parse as UTF-8
+    /// The entered password was not UTF-8
     Utf8(Utf8Error),
 }
 
