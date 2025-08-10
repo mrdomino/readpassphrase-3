@@ -15,9 +15,6 @@ exclude = [
     ".gitignore",
 ]
 
-[package.metadata.docs.rs]
-features = ["zeroize"]
-
 [dependencies]
 bitflags = "2"
 zeroize = { version = "1", optional = true }
