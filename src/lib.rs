@@ -276,7 +276,7 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Resu
 /// let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty()).map_err(zero_b)?;
 /// # Ok(())
 /// # }
-pub fn zero_b<A>((a, mut b): (A, Vec<u8>)) -> A {
+pub fn zero_b<A, B: Zeroize>((a, mut b): (A, B)) -> A {
     b.zeroize();
     a
 }
