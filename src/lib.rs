@@ -58,6 +58,20 @@
 //! # }
 //! ```
 //!
+//! This crate works well with the [`zeroize`][1] crate; for example, [`zeroize::Zeroizing`][2] may
+//! be used to zero buffer contents regardless of a function’s control flow:
+//!
+//! ```no_run
+//! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, readpassphrase};
+//! use zeroize::Zeroizing;
+//! # fn main() -> Result<(), Error> {
+//! let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
+//! let pass = readpassphrase(c"pass: ", &mut buf, RppFlags::REQUIRE_TTY)?;
+//! // do_something_that_can_fail_with(pass)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! # “Mismatched types” errors
 //! The prompt strings in this API are references to [CStr], not [str]. This is because the
 //! underlying C function assumes that the prompt is a null-terminated string; were we to take
@@ -82,6 +96,8 @@
 //! though called with [`RppFlags::empty()`].
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
+//! [1]: https://docs.rs/zeroize/latest/zeroize/
+//! [2]: https://docs.rs/zeroize/latest/zeroize/struct.Zeroizing.html
 
 use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 
