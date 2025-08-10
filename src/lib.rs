@@ -282,6 +282,26 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Resu
     }
 }
 
+/// Securely zero the memory in `buf`.
+///
+/// This function zeroes the full capacity of `buf`, erasing any sensitive data in it. It is
+/// a simple shim for [`zeroize`] and the latter should be used instead.
+///
+/// # Usage
+/// The following are equivalent:
+/// ```no_run
+/// # use readpassphrase_3::{explicit_bzero, zeroize::Zeroize};
+/// let mut buf = vec![1u8; 1];
+/// // 1.
+/// explicit_bzero(&mut buf);
+/// // 2.
+/// buf.zeroize();
+/// ```
+#[deprecated(since = "0.6.0", note = "use zeroize::Zeroize instead")]
+pub fn explicit_bzero(buf: &mut Vec<u8>) {
+    buf.zeroize();
+}
+
 /// Convenience function to zero `buf` on error in `readpassphrase_owned`.
 ///
 /// # Usage
