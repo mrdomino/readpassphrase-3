@@ -10,7 +10,7 @@ See <https://docs.rs/readpassphrase-3> for documentation and examples.
 
 # Features
 - `cc`, enabled by default, compiles and uses a vendored version of the `readpassphrase` C function. (You may wish to turn this off to use the version from your system’s libc, or to compile and link the C function through other means.)
-- `zeroize` uses [zeroize][3] to zero memory internally (otherwise a minimal in-crate version is used)
+- `zeroize` uses [zeroize][3] to zero memory internally (otherwise a minimal in-crate version is used.)
 
 # NFAQ
 
