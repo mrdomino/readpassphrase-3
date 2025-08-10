@@ -6,7 +6,7 @@ description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
 repository = "https://github.com/mrdomino/readpassphrase-3"
 license = "BSD-1-Clause"
-keywords = ["tty", "passphrase", "password"]
+keywords = ["getpass", "passphrase", "password", "tty"]
 categories = ["command-line-interface"]
 
 exclude = [

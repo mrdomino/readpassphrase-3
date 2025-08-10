@@ -30,6 +30,58 @@
 //! The [`readpassphrase_owned`] function is a bit more niche; it may be used when you need a
 //! [`String`] output but need to pass flags or control the buffer size (vs [`getpass`].)
 //!
+//! If the passphrases you read are sensitive data, then it is usually advised to zero their memory
+//! afterwards. You can do this with a crate like [`zeroize`] or with the provided
+//! [`explicit_bzero`] function in this crate.
+//!
+//! To read a passphrase from the console:
+//! ```no_run
+//! # use readpassphrase_3::{explicit_bzero, getpass};
+//! let pass = getpass(c"password: ").unwrap();
+//! // do_something_with(&pass);
+//! explicit_bzero(pass);
+//! ```
+//!
+//! To control the buffer size or (on non-Windows) flags:
+//! ```no_run
+//! # use readpassphrase_3::{RppFlags, readpassphrase};
+//! # let mut buf = vec![0u8; 1];
+//! let pass = readpassphrase(c"pass: ", &mut buf, RppFlags::ECHO_ON).unwrap();
+//! ```
+//!
+//! To do so while transferring ownership:
+//! ```no_run
+//! # use readpassphrase_3::{Error, RppFlags, clear_b, readpassphrase_owned};
+//! # fn main() -> Result<(), Error> {
+//! # let buf = vec![0u8; 1];
+//! let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty()).map_err(clear_b)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # “Mismatched types” errors
+//! The prompt strings in this API are references to [CStr], not [str]. This is because the
+//! underlying C function assumes that the prompt is a null-terminated string; were we to take
+//! `&str` instead of `&CStr`, we would need to make a copy of the prompt on every call.
+//!
+//! Most of the time, your prompts will be string literals; you can ask Rust to give you a `&CStr`
+//! literal by simply prepending `c` to the string:
+//! ```no_run
+//! # use readpassphrase_3::{Error, getpass};
+//! # fn main() -> Result<(), Error> {
+//! let _ = getpass(c"pass: ")?;
+//! //              ^
+//! //              |
+//! //              like this
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Windows Limitations
+//! The Windows implementation of `readpassphrase(3)` that we are using does not yet support UTF-8
+//! in prompts; they must be ASCII. It also does not yet support flags, and always behaves as
+//! though called with [`RppFlags::empty()`].
+//!
 //! [0]: https://man.openbsd.org/readpassphrase
 
 use std::{
@@ -41,6 +93,10 @@ use std::{
 
 use bitflags::bitflags;
 
+/// Length of buffer used in [`getpass`].
+///
+/// Because [`ffi::readpassphrase`] null-terminates its string, the actual maximum password length
+/// for [`getpass`] is 255.
 pub const PASSWORD_LEN: usize = 256;
 
 bitflags! {
@@ -123,7 +179,7 @@ pub fn readpassphrase<'a>(
 /// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) If the entered passphrase
 /// is longer, it will be truncated.
 ///
-/// The passed flags are always the defaults, i.e., [`RppFlags::ECHO_OFF`].
+/// The passed flags are always the defaults, i.e., [`RppFlags::default()`].
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
@@ -138,15 +194,10 @@ pub fn readpassphrase<'a>(
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
     #[allow(unused_mut, unused_variables)]
-    readpassphrase_owned(prompt, vec![0u8; PASSWORD_LEN], RppFlags::empty()).map_err(
-        |(e, mut buf)| {
-            explicit_bzero(&mut buf);
-            e
-        },
-    )
+    readpassphrase_owned(prompt, vec![0u8; PASSWORD_LEN], RppFlags::empty()).map_err(clear_b)
 }
 
-/// Reads a passphrase using `readpassphrase(3)` using the passed buffer’s memory.
+/// Reads a passphrase using `readpassphrase(3)` by reusing the passed buffer’s memory.
 ///
 /// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
 /// is longer, it will be truncated.
@@ -204,6 +255,34 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Resu
     }
 }
 
+/// Convenience function to zero the memory from `readpassphrase_owned` on error.
+///
+/// Usage:
+/// ```no_run
+/// # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, readpassphrase_owned, clear_b};
+/// # fn main() -> Result<(), Error> {
+/// let buf = vec![0u8; PASSWORD_LEN];
+/// let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty()).map_err(clear_b)?;
+/// # Ok(())
+/// # }
+/// ```
+pub fn clear_b<A>((a, mut b): (A, Vec<u8>)) -> A {
+    explicit_bzero_vec(&mut b);
+    a
+}
+
+/// Securely zero the memory in `s`.
+///
+/// This function clears the full capacity of `s` by writing zeroes to it, thereby erasing any
+/// sensitive data in `s`. It should be called to clear any sensitive passphrases once they are no
+/// longer in use.
+///
+/// If the `zeroize` feature is enabled, this internally uses [`zeroize::Zeroize`].
+pub fn explicit_bzero(s: String) {
+    let mut buf = Vec::from(s);
+    explicit_bzero_vec(&mut buf);
+}
+
 /// Securely zero the memory in `buf`.
 ///
 /// This function clears the full capacity of `buf` by writing zeroes to it, thereby erasing any
@@ -211,7 +290,7 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Resu
 /// no longer in use.
 ///
 /// If the `zeroize` feature is enabled, this internally uses [`zeroize::Zeroize`].
-pub fn explicit_bzero(buf: &mut Vec<u8>) {
+pub fn explicit_bzero_vec(buf: &mut Vec<u8>) {
     #[cfg(feature = "zeroize")]
     {
         use zeroize::Zeroize;
