@@ -95,15 +95,16 @@ use bitflags::bitflags;
 
 /// Length of buffer used in [`getpass`].
 ///
-/// Because [`ffi::readpassphrase`] null-terminates its string, the actual maximum password length
-/// for [`getpass`] is 255.
+/// Because `readpassphrase(3)` null-terminates its string, the actual maximum password length for
+/// [`getpass`] is 255.
 pub const PASSWORD_LEN: usize = 256;
 
 bitflags! {
-    /// Flags for controlling readpassphrase
+    /// Flags for controlling readpassphrase.
+    ///
+    /// Note: these flags do not currently work on Windows, which always acts like it was called
+    /// with  `ECHO_OFF`.
     pub struct RppFlags: i32 {
-        /// Turn off echo (default)
-        const ECHO_OFF    = 0x00;
         /// Leave echo on
         const ECHO_ON     = 0x01;
         /// Fail if there is no tty
@@ -121,7 +122,7 @@ bitflags! {
 
 impl Default for RppFlags {
     fn default() -> Self {
-        Self::ECHO_OFF
+        Self::empty()
     }
 }
 
