@@ -1,7 +1,7 @@
 # readpassphrase-3
 This crate endeavors to expose a thin Rust wrapper around the C [`readpassphrase(3)`][0] function for reading passphrases on the console in CLI programs.
 
-This library uses a few third-party dependencies: flags to `readpassphrase` are implemented via the [bitflags][1] library, native builds are done via [cc][2], and memory zeroing can optionally be done by [zeroize][3]. To try to reduce churn in this library itself, we do not lock the versions of these dependencies; it is recommended that you vet their current versions yourself for compromises or software supply chain attacks. If you would rather not do that, consider instead using the excellent [rpassword][4] crate, which ships without external dependencies.
+This library uses a few third-party dependencies: flags to `readpassphrase` are implemented via the [bitflags][1] library, native builds are done via [cc][2], and memory zeroing can optionally be done by [zeroize][3]. To try to reduce churn in this library itself, we do not lock the versions of these dependencies; it is recommended that you vet their current versions yourself for compromises or software supply chain attacks. If you would rather not do that (or if you need support for wasm), consider instead using the excellent [rpassword][4] crate, which ships without external dependencies.
 
 # Usage
 Add this crate to your project with `cargo add readpassphrase-3`. If you would like memory zeroing to be done by [zeroize][3], then you can instead say: `cargo add readpassphrase-3 -F zeroize`.
