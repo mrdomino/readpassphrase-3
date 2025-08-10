@@ -223,12 +223,12 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 /// #     Error,
 /// #     RppFlags,
 /// #     readpassphrase_owned,
+/// #     zero_b,
 /// #     zeroize::Zeroize,
 /// # };
 /// # fn main() -> Result<(), Error> {
 /// let buf = vec![0u8; PASSWORD_LEN];
-/// let mut pass = readpassphrase_owned(c"Pass: ", buf, RppFlags::default())
-///     .map_err(|(e, mut buf)| { buf.zeroize(); e })?;
+/// let mut pass = readpassphrase_owned(c"Pass: ", buf, RppFlags::default()).map_err(zero_b)?;
 /// _ = pass;
 /// pass.zeroize();
 /// # Ok(())
