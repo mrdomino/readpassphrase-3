@@ -15,12 +15,15 @@ exclude = [
     ".gitignore",
 ]
 
+[features]
+default = ["cc"]
+
 [dependencies]
 bitflags = "2"
 zeroize = { version = "1", optional = true }
 
 [build-dependencies]
-cc = "1"
+cc = { version = "1", optional = true }
 
 [dev-dependencies]
 zeroize = "1"
