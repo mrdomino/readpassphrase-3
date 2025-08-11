@@ -15,6 +15,9 @@ exclude = [
     ".gitignore",
 ]
 
+[package.metadata.docs.rs]
+rustc-args = ["--features", "zeroize"]
+
 [features]
 default = ["cc"]
 

@@ -104,7 +104,7 @@ use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 use bitflags::bitflags;
 use zeroize::Zeroize;
 
-#[cfg(feature = "zeroize")]
+#[cfg(all(not(docsrs), feature = "zeroize"))]
 pub use zeroize;
 
 /// Size of buffer used in [`getpass`].
@@ -381,7 +381,7 @@ impl Display for Error {
 /// itself.
 ///
 /// [0]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html
-#[cfg(not(feature = "zeroize"))]
+#[cfg(any(docsrs, not(feature = "zeroize")))]
 pub mod zeroize {
     use std::{arch::asm, mem::MaybeUninit};
 
