@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
@@ -15,8 +15,18 @@ exclude = [
     ".gitignore",
 ]
 
-[package.metadata.docs.rs]
-features = ["zeroize"]
+[[example]]
+name = "pass"
+path = "examples/pass.rs"
+doc-scrape-examples = true
+
+[[example]]
+name = "inplace"
+path = "examples/inplace.rs"
+
+[[example]]
+name = "owned"
+path = "examples/owned.rs"
 
 [features]
 default = ["cc"]
@@ -30,3 +40,8 @@ cc = { version = "1", optional = true }
 
 [dev-dependencies]
 zeroize = "1"
+
+[package.metadata.docs.rs]
+features = ["zeroize"]
+# XXX cc is crashing on mac and windows on docs.rs
+no-default-features = true
