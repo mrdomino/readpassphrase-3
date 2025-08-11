@@ -6,16 +6,27 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
 
-use readpassphrase_3::{RppFlags, readpassphrase};
+use std::process::exit;
+
+use readpassphrase_3::{PASSWORD_LEN, RppFlags, readpassphrase};
 use zeroize::Zeroizing;
 
 fn main() {
-    let mut buf = Zeroizing::new(vec![0u8; 256]);
-    let password = readpassphrase(
-        c"Password: ",
-        &mut buf,
-        RppFlags::FORCEUPPER | RppFlags::ECHO_ON,
-    )
-    .expect("failed reading passphrase");
-    println!("{password}");
+    let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
+    let password = Zeroizing::new(
+        readpassphrase(c"Password: ", &mut buf, RppFlags::empty())
+            .expect("failed reading passphrase")
+            .to_string(),
+    );
+    for _ in 0..5 {
+        let confirm = readpassphrase(c"Confirmation: ", &mut buf, RppFlags::REQUIRE_TTY)
+            .expect("failed reading confirmation");
+        if *password == confirm {
+            eprintln!("Passwords match.");
+            return;
+        }
+        eprintln!("Passwords don’t match.");
+    }
+    eprintln!("Too many attempts.");
+    exit(1);
 }
