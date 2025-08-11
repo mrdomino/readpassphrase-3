@@ -15,11 +15,14 @@ fn main() {
             cc::Build::new()
                 .file("csrc/read-password-w32.c")
                 .compile("read-password-w32");
+            println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
         } else {
             cc::Build::new()
                 .file("csrc/readpassphrase.c")
                 .include("csrc")
                 .compile("readpassphrase");
+            println!("cargo:rerun-if-changed=csrc/readpassphrase.c");
+            println!("cargo:rerun-if-changed=csrc/readpassphrase.h");
         }
     }
 }
