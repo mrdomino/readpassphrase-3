@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "0.6.0"
+version = "0.6.1-pre.0"
 edition = "2024"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
@@ -17,6 +17,7 @@ exclude = [
 
 [package.metadata.docs.rs]
 features = ["zeroize"]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 
 [features]
 default = ["cc"]
