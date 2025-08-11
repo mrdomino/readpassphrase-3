@@ -104,9 +104,6 @@ use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 use bitflags::bitflags;
 use zeroize::Zeroize;
 
-#[cfg(all(not(docsrs), feature = "zeroize"))]
-pub use zeroize;
-
 /// Size of buffer used in [`getpass`].
 ///
 /// Because `readpassphrase(3)` null-terminates its string, the actual maximum password length for
@@ -419,6 +416,11 @@ pub mod zeroize {
             );
         }
     }
+}
+
+#[cfg(all(not(docsrs), feature = "zeroize"))]
+pub mod zeroize {
+    pub use zeroize::Zeroize;
 }
 
 mod ffi {
