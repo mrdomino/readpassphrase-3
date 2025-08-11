@@ -223,16 +223,21 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 /// An error from [`readpassphrase_owned`].
 ///
 /// This wraps [`Error`] but also contains the passed buffer, accessible via [`OwnedError::take`].
+/// If not taken, the buffer is zeroed on drop.
 #[derive(Debug)]
 pub struct OwnedError(Error, Option<Vec<u8>>);
 
-/// Reads a passphrase using `readpassphrase(3)` by reusing the passed buffer’s memory.
+/// Reads a passphrase using `readpassphrase(3)` backed by the passed buffer’s memory.
 ///
 /// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
 /// is longer, it will be truncated.
 ///
-/// The returned [`String`] uses `buf`’s memory; on failure, this memory is returned to the caller
-/// in the second argument of the `Err` tuple with its length set to 0.
+/// The returned [`String`] reuses `buf`’s memory; no copies are made. On error, the returned
+/// [`OwnedError`] includes the original buffer with its length reset to zero. `OwnedError`
+/// converts to [`Error`], so the `?` operator may be used with functions that return `Error`.
+///
+/// **NB**. Sometimes in Rust the capacity of a vector may be larger than you expect; if you need a
+/// precise limit on the length of the entered password, use [`readpassphrase`] instead.
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
