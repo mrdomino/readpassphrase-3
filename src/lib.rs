@@ -223,7 +223,9 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
     )?)
 }
 
-/// An error from [`readpassphrase_owned`]. Contains the passed buffer.
+/// An error from [`readpassphrase_owned`].
+///
+/// This wraps [`Error`] but also contains the passed buffer, accessible via [`OwnedError::take`].
 #[derive(Debug)]
 pub struct OwnedError(Error, Option<Vec<u8>>);
 
