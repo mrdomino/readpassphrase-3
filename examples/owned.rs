@@ -17,9 +17,8 @@ fn main() -> Result<(), Error> {
             c"Confirmation: ",
             buf.take().unwrap(),
             RppFlags::REQUIRE_TTY,
-        )
-        .map_err(|(e, _)| e)?;
-        if *pass == res {
+        )?;
+        if pass == res {
             break;
         }
         buf = Some(res.into());

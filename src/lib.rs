@@ -50,10 +50,10 @@
 //!
 //! To do so while transferring ownership:
 //! ```no_run
-//! # use readpassphrase_3::{Error, RppFlags, zero_b, readpassphrase_owned};
+//! # use readpassphrase_3::{Error, RppFlags, readpassphrase_owned};
 //! # fn main() -> Result<(), Error> {
 //! # let buf = vec![0u8; 1];
-//! let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty()).map_err(zero_b)?;
+//! let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty())?;
 //! # Ok(())
 //! # }
 //! ```
@@ -141,12 +141,12 @@ bitflags! {
     }
 }
 
-/// Errors that can occur in readpassphrase
+/// Errors that can occur in readpassphrase.
 #[derive(Debug)]
 pub enum Error {
-    /// `readpassphrase(3)` itself encountered an error
+    /// `readpassphrase(3)` itself encountered an error.
     Io(io::Error),
-    /// The entered password was not UTF-8
+    /// The entered password was not UTF-8.
     Utf8(Utf8Error),
 }
 
@@ -216,8 +216,16 @@ pub fn readpassphrase<'a>(
 /// # }
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
-    readpassphrase_owned(prompt, vec![0u8; PASSWORD_LEN], RppFlags::empty()).map_err(zero_b)
+    Ok(readpassphrase_owned(
+        prompt,
+        vec![0u8; PASSWORD_LEN],
+        RppFlags::empty(),
+    )?)
 }
+
+/// An error from [`readpassphrase_owned`]. Contains the passed buffer.
+#[derive(Debug)]
+pub struct OwnedError(Error, Option<Vec<u8>>);
 
 /// Reads a passphrase using `readpassphrase(3)` by reusing the passed buffer’s memory.
 ///
@@ -239,12 +247,11 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 /// #     Error,
 /// #     RppFlags,
 /// #     readpassphrase_owned,
-/// #     zero_b,
 /// #     zeroize::Zeroize,
 /// # };
 /// # fn main() -> Result<(), Error> {
 /// let buf = vec![0u8; PASSWORD_LEN];
-/// let mut pass = readpassphrase_owned(c"Pass: ", buf, RppFlags::default()).map_err(zero_b)?;
+/// let mut pass = readpassphrase_owned(c"Pass: ", buf, RppFlags::default())?;
 /// _ = pass;
 /// pass.zeroize();
 /// # Ok(())
@@ -254,10 +261,10 @@ pub fn readpassphrase_owned(
     prompt: &CStr,
     mut buf: Vec<u8>,
     flags: RppFlags,
-) -> Result<String, (Error, Vec<u8>)> {
+) -> Result<String, OwnedError> {
     readpassphrase_mut(prompt, &mut buf, flags).map_err(|e| {
         buf.clear();
-        (e, buf)
+        OwnedError(e, Some(buf))
     })
 }
 
@@ -302,19 +309,25 @@ pub fn explicit_bzero(buf: &mut Vec<u8>) {
     buf.zeroize();
 }
 
-/// Convenience function to zero `buf` on error in `readpassphrase_owned`.
-///
-/// # Usage
-/// ```no_run
-/// # use readpassphrase_3::{Error, RppFlags, readpassphrase_owned, zero_b};
-/// # fn main() -> Result<(), Error> {
-/// # let buf = vec![0u8; 1];
-/// let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty()).map_err(zero_b)?;
-/// # Ok(())
-/// # }
-pub fn zero_b<A, B: Zeroize>((a, mut b): (A, B)) -> A {
-    b.zeroize();
-    a
+impl OwnedError {
+    /// Take `buf` out of the error.
+    ///
+    /// Guaranteed to return `Some(buf)` on the first call, `None` afterwards.
+    pub fn take(&mut self) -> Option<Vec<u8>> {
+        self.1.take()
+    }
+}
+
+impl Drop for OwnedError {
+    fn drop(&mut self) {
+        self.1.take().as_deref_mut().map(zeroize::Zeroize::zeroize);
+    }
+}
+
+impl From<OwnedError> for Error {
+    fn from(mut value: OwnedError) -> Self {
+        mem::replace(&mut value.0, Error::Io(io::ErrorKind::Other.into()))
+    }
 }
 
 impl From<io::Error> for Error {
@@ -326,6 +339,18 @@ impl From<io::Error> for Error {
 impl From<Utf8Error> for Error {
     fn from(value: Utf8Error) -> Self {
         Error::Utf8(value)
+    }
+}
+
+impl core::error::Error for OwnedError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl Display for OwnedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
