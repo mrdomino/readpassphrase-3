@@ -1,7 +1,5 @@
 /* Author: Chris Wellons
  * <https://nullprogram.com/blog/2020/05/04>
- *
- * This file is in the public domain.
  */
 
 /* UTF-8 console password prompt for Windows
