@@ -239,10 +239,7 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
-/// it. It is also the caller’s responsibility to clear the buffer returned on error, as it may
-/// still contain sensitive data, for example if the password was not valid UTF-8.
-///
-/// This can be done via [`zeroize`], e.g.:
+/// it. This can be done via [`zeroize`], e.g.:
 /// ```no_run
 /// # use readpassphrase_3::{
 /// #     PASSWORD_LEN,
