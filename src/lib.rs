@@ -26,8 +26,8 @@
 //! [`getpass`] (for simple password entry) or [`readpassphrase`] (when you need flags from
 //! `readpassphrase(3)` or need more control over the memory.)
 //!
-//! The [`readpassphrase_owned`] function is a bit more niche; it may be used when you need a
-//! [`String`] output but need to pass flags or control the buffer size (vs [`getpass`].)
+//! A [`readpassphrase_owned`] function is also provided that takes ownership of the passed buffer
+//! and returns an owned [`String`] reusing that buffer’s memory.
 //!
 //! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
 //! process’s address space.
@@ -46,31 +46,42 @@
 //! # use readpassphrase_3::{RppFlags, readpassphrase};
 //! # let mut buf = vec![0u8; 1];
 //! let pass = readpassphrase(c"pass: ", &mut buf, RppFlags::ECHO_ON).unwrap();
+//! // do_something_with(pass);
 //! ```
 //!
 //! To do so while transferring ownership:
 //! ```no_run
-//! # use readpassphrase_3::{Error, RppFlags, readpassphrase_owned};
+//! # use readpassphrase_3::{Error, RppFlags, readpassphrase_owned, zeroize::Zeroize};
 //! # fn main() -> Result<(), Error> {
 //! # let buf = vec![0u8; 1];
-//! let pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty())?;
+//! let mut pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty())?;
+//! // do_something_with(&pass);
+//! pass.zeroize();
 //! # Ok(())
 //! # }
 //! ```
 //!
+//! ## Zeroizing memory
 //! This crate works well with the [`zeroize`][1] crate; for example, [`zeroize::Zeroizing`][2] may
 //! be used to zero buffer contents regardless of a function’s control flow:
-//!
 //! ```no_run
-//! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, readpassphrase};
+//! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, getpass, readpassphrase};
 //! use zeroize::Zeroizing;
 //! # fn main() -> Result<(), Error> {
 //! let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
 //! let pass = readpassphrase(c"pass: ", &mut buf, RppFlags::REQUIRE_TTY)?;
 //! // do_something_that_can_fail_with(pass)?;
+//!
+//! // Or alternatively:
+//! let pass = Zeroizing::new(getpass(c"pass: ")?);
+//! // do_something_that_can_fail_with(&pass)?;
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! This crate itself provides a minimal subset of [`zeroize`] that works on the types taken and
+//! returned by its other methods. If the `zeroize` feature is enabled, this minimal subset is
+//! replaced by [`zeroize::Zeroize`][3].
 //!
 //! # “Mismatched types” errors
 //! The prompt strings in this API are references to [CStr], not [str]. This is because the
@@ -98,6 +109,7 @@
 //! [0]: https://man.openbsd.org/readpassphrase
 //! [1]: https://docs.rs/zeroize/latest/zeroize/
 //! [2]: https://docs.rs/zeroize/latest/zeroize/struct.Zeroizing.html
+//! [3]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html
 
 use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 
@@ -378,8 +390,8 @@ impl Display for Error {
 /// This provides compile-fenced memory zeroing for [`String`]s and [`Vec`]s without needing to
 /// depend on the `zeroize` crate.
 ///
-/// If the optional `zeroize` feature is enabled, then this module is replaced with `zeroize`
-/// itself.
+/// If the optional `zeroize` feature is enabled, then the trait is replaced with a re-export of
+/// [`zeroize::Zeroize`] itself.
 ///
 /// [0]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html
 #[cfg(any(docsrs, not(feature = "zeroize")))]
