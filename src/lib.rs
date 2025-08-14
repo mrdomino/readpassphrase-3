@@ -20,48 +20,54 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! This library endeavors to expose a thin wrapper around the C [`readpassphrase(3)`][0] function.
-//!
-//! Three different interfaces are exposed; for most purposes, you will want to use either
-//! [`getpass`] (for simple password entry) or [`readpassphrase`] (when you need flags from
-//! `readpassphrase(3)` or need more control over the memory.)
-//!
-//! A [`readpassphrase_owned`] function is also provided that takes ownership of the passed buffer
-//! and returns an owned [`String`] reusing that buffer’s memory.
-//!
-//! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
-//! process’s address space.
+//! This library exposes a thin but usable wrapper around the C [`readpassphrase(3)`][0] function.
 //!
 //! # Usage
-//! To read a passphrase from the console:
+//! For the simplest of cases, where you would just like to read a password from the console into a
+//! [`String`] to use elsewhere, you can use [`getpass`]:
 //! ```no_run
-//! # use readpassphrase_3::{getpass, zeroize::Zeroize};
+//! # use readpassphrase_3::{getpass};
+//! let _ = getpass(c"Enter your password: ").expect("failed reading password");
+//! ```
+//!
+//! If you need to pass [`RppFlags`] or to control the buffer size, then you can use
+//! [`readpassphrase`] or [`readpassphrase_owned`] depending on your ownership requirements:
+//! ```no_run
+//! # use readpassphrase_3::{RppFlags, readpassphrase};
+//! let mut buf = vec![0u8; 256];
+//! let _ = readpassphrase(c"Password: ", &mut buf, RppFlags::default()).unwrap();
+//!
+//! # use readpassphrase_3::{readpassphrase_owned};
+//! let _ = readpassphrase_owned(c"Pass: ", buf, RppFlags::FORCELOWER).unwrap();
+//! ```
+//!
+//! # Security
+//! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
+//! process’s address space. This crate ships with a minimal [`zeroize`] module that may be used
+//! for this purpose on the types taken and returned by these functions:
+//! ```no_run
+//! # use readpassphrase_3::{
+//! #     RppFlags,
+//! #     getpass,
+//! #     readpassphrase,
+//! #     readpassphrase_owned,
+//! #     zeroize::Zeroize,
+//! # };
 //! let mut pass = getpass(c"password: ").unwrap();
 //! // do_something_with(&pass);
 //! pass.zeroize();
-//! ```
 //!
-//! To control the buffer size or (on non-Windows) flags:
-//! ```no_run
-//! # use readpassphrase_3::{RppFlags, readpassphrase};
-//! # let mut buf = vec![0u8; 1];
-//! let pass = readpassphrase(c"pass: ", &mut buf, RppFlags::ECHO_ON).unwrap();
-//! // do_something_with(pass);
-//! ```
+//! let mut buf = vec![0u8; 256];
+//! let res = readpassphrase(c"password: ", &mut buf, RppFlags::empty());
+//! // match_something_on(res);
+//! buf.zeroize();
 //!
-//! To do so while transferring ownership:
-//! ```no_run
-//! # use readpassphrase_3::{Error, RppFlags, readpassphrase_owned, zeroize::Zeroize};
-//! # fn main() -> Result<(), Error> {
-//! # let buf = vec![0u8; 1];
-//! let mut pass = readpassphrase_owned(c"pass: ", buf, RppFlags::empty())?;
+//! let mut pass = readpassphrase_owned(c"password: ", buf, RppFlags::empty()).unwrap();
 //! // do_something_with(&pass);
 //! pass.zeroize();
-//! # Ok(())
-//! # }
 //! ```
 //!
-//! ## Zeroizing memory
+//! ## `zeroize` feature
 //! This crate works well with the [`zeroize`][1] crate; for example, [`zeroize::Zeroizing`][2] may
 //! be used to zero buffer contents regardless of a function’s control flow:
 //! ```no_run
@@ -79,9 +85,8 @@
 //! # }
 //! ```
 //!
-//! This crate itself provides a minimal subset of [`zeroize`] that works on the types taken and
-//! returned by its other methods. If the `zeroize` feature is enabled, this minimal subset is
-//! replaced by [`zeroize::Zeroize`][3].
+//! If this crate’s `zeroize` feature is enabled, then its [`zeroize`] will be replaced by the
+//! upstream [`zeroize::Zeroize`][3].
 //!
 //! # “Mismatched types” errors
 //! The prompt strings in this API are references to [CStr], not [str]. This is because the
@@ -159,21 +164,16 @@ pub enum Error {
     Utf8(Utf8Error),
 }
 
-/// Reads a passphrase using `readpassphrase(3)`.
+/// Reads a passphrase using `readpassphrase(3)`, returning a [`&str`](str).
 ///
-/// This function tries to faithfully wrap `readpassphrase(3)` without overhead; the only
-/// additional work it does is:
-/// 1. It converts from a Rust byte slice to a C pointer/length pair going in.
-/// 2. It converts from a C `char *` to a Rust UTF-8 `&str` coming out.
-/// 3. It translates errors from `errno` (or string conversion) into [`Result`].
-///
-/// This function reads a passphrase of up to `buf.len() - 1` bytes. If the entered passphrase is
-/// longer, it will be truncated.
+/// This function reads a password of up to `buf.len() - 1` bytes into `buf`. If the entered
+/// password is longer, it is truncated to the maximum length. If `readpasspharse(3)` itself fails,
+/// or if the entered password is not valid UTF-8, then [`Error`] is returned.
 ///
 /// # Security
-/// The passed buffer might contain sensitive data even if this function returns an error (for
-/// example, if the contents are not valid UTF-8.) Therefore it should be zeroed as soon as
-/// possible. This can be achieved, for example, with [`zeroize::Zeroizing`][0]:
+/// The passed buffer might contain sensitive data, even if this function returns an error.
+/// Therefore it should be zeroed as soon as possible. This can be achieved, for example, with
+/// [`zeroize::Zeroizing`][0]:
 /// ```no_run
 /// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase};
 /// use zeroize::Zeroizing;
@@ -204,13 +204,11 @@ pub fn readpassphrase<'a>(
     Ok(CStr::from_bytes_until_nul(buf).unwrap().to_str()?)
 }
 
-/// Reads a passphrase using `readpassphrase(3)`, returning it as a [`String`].
+/// Reads a passphrase using `readpassphrase(3)`, returning a [`String`].
 ///
 /// Internally, this function uses a buffer of [`PASSWORD_LEN`] bytes, allowing for passwords up to
 /// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) If the entered passphrase
-/// is longer, it will be truncated.
-///
-/// The passed flags are always [`RppFlags::default()`], i.e. `ECHO_OFF`.
+/// is longer, it will be truncated to the maximum length.
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
@@ -235,21 +233,22 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 /// An error from [`readpassphrase_owned`].
 ///
 /// This wraps [`Error`] but also contains the passed buffer, accessible via [`OwnedError::take`].
-/// If not taken, the buffer is zeroed on drop.
+/// If [`take`](OwnedError::take) is not called, the buffer is automatically zeroed on drop.
 #[derive(Debug)]
 pub struct OwnedError(Error, Option<Vec<u8>>);
 
-/// Reads a passphrase using `readpassphrase(3)` backed by the passed buffer’s memory.
+/// Reads a passphrase using `readpassphrase(3)`, returning a [`String`] reusing `buf`’s memory.
 ///
 /// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
 /// is longer, it will be truncated.
 ///
-/// The returned [`String`] reuses `buf`’s memory; no copies are made. On error, the returned
-/// [`OwnedError`] includes the original buffer with its length reset to zero. `OwnedError`
-/// converts to [`Error`], so the `?` operator may be used with functions that return `Error`.
+/// The returned [`String`] reuses `buf`’s memory; no copies are made. On error, the original
+/// buffer is instead returned via [`OwnedError`] and may be reused. `OwnedError` converts to
+/// [`Error`], so the `?` operator may be used with functions that return `Error`.
 ///
 /// **NB**. Sometimes in Rust the capacity of a vector may be larger than you expect; if you need a
-/// precise limit on the length of the entered password, use [`readpassphrase`] instead.
+/// precise limit on the length of the entered password, either use [`readpassphrase`] or truncate
+/// the returned string.
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
