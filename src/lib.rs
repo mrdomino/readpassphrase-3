@@ -107,6 +107,8 @@
 //! # }
 //! ```
 //!
+//! If you need a dynamic prompt, look at [`CString`](std::ffi::CString).
+//!
 //! # Windows Limitations
 //! The Windows implementation of `readpassphrase(3)` that we are using does not yet support UTF-8
 //! in prompts; they must be ASCII. It also does not yet support flags, and always behaves as

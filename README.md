@@ -40,8 +40,10 @@ let _ = getpass(c"Prompt: ")?;
 //              like this
 ```
 
+If you need a dynamic prompt, look at [`CString`][6].
+
 ## Why is this named `readpassphrase-3`?
-There is already an unmaintained [`readpassphrase`][6] crate that was not to my liking. Rather than try to invent a new name for this standard C function, I decided to pick a number. The number I picked, 3, corresponds to the [“library calls” man section][7], in which readpassphrase’s man page is located.
+There is already an unmaintained [`readpassphrase`][7] crate that was not to my liking. Rather than try to invent a new name for this standard C function, I decided to pick a number. The number I picked, 3, corresponds to the [“library calls” man section][8], in which readpassphrase’s man page is located.
 
 [0]: https://man.openbsd.org/readpassphrase
 [1]: https://crates.io/crates/bitflags
@@ -49,5 +51,6 @@ There is already an unmaintained [`readpassphrase`][6] crate that was not to my 
 [3]: https://crates.io/crates/zeroize
 [4]: https://crates.io/crates/rpassword
 [5]: https://doc.rust-lang.org/std/ffi/struct.CStr.html
-[6]: https://crates.io/crates/readpassphrase
-[7]: https://man7.org/linux/man-pages/man7/man-pages.7.html
+[6]: https://doc.rust-lang.org/std/ffi/struct.CString.html
+[7]: https://crates.io/crates/readpassphrase
+[8]: https://man7.org/linux/man-pages/man7/man-pages.7.html
