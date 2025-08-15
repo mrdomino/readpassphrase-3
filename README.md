@@ -21,6 +21,14 @@ See <https://docs.rs/readpassphrase-3> for documentation and examples.
 
 # NFAQ
 
+## Why use this?
+[`readpassphrase(3)`][0] is a standard function that exists in many platforms’ libc implementations. It has had a lot of miles put on it; it is well-tested and works even under conditions like suspend/resume with `C-z` / `fg`, keeping echo off and so forth.
+
+As well, `readpassphrase(3)` —and the interfaces this library exposes to it— does not allocate extra memory, making it relatively easy to be sure that you have zeroed all copies of your passwords after use. As long as you zero the memory you own, either the buffer you pass in to the non-owned `readpassphrase` or the `String` you receive from the owned `getpass`, you’re good.
+
+## Why not use this?
+This crate requires either a `readpassphrase(3)` in the libc on your target platform or a build-time dependency on a C compiler; if you do not wish to take that on, then you should look elsewhere.
+
 ## I’m getting a “mismatched types” error!
 That’s not a question, but it’s okay. You are probably passing a Rust `&str` as the prompt argument. To avoid needing to take a dynamically allocated string or make a copy of the prompt on every call, this library takes a [`&CStr`][5] (i.e. a null-terminated span of characters) as its prompt argument.
 
