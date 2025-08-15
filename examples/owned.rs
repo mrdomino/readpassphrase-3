@@ -24,7 +24,7 @@ fn main() -> Result<(), Error> {
             res.zeroize();
             break;
         }
-        buf = Some(res.into());
+        buf = Some(res.into_bytes());
     }
     Ok(())
 }
