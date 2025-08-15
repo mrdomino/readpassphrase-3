@@ -20,31 +20,34 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 // IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! This library exposes a thin but usable wrapper around the C [`readpassphrase(3)`][0] function.
+//! Lightweight, easy-to-use wrapper around the C [`readpassphrase(3)`][0] function.
 //!
 //! # Usage
 //! For the simplest of cases, where you would just like to read a password from the console into a
 //! [`String`] to use elsewhere, you can use [`getpass`]:
 //! ```no_run
-//! # use readpassphrase_3::{getpass};
+//! use readpassphrase_3::getpass;
 //! let _ = getpass(c"Enter your password: ").expect("failed reading password");
 //! ```
 //!
 //! If you need to pass [`RppFlags`] or to control the buffer size, then you can use
 //! [`readpassphrase`] or [`readpassphrase_owned`] depending on your ownership requirements:
 //! ```no_run
-//! # use readpassphrase_3::{RppFlags, readpassphrase};
+//! use readpassphrase_3::{RppFlags, readpassphrase};
 //! let mut buf = vec![0u8; 256];
 //! let _ = readpassphrase(c"Password: ", &mut buf, RppFlags::default()).unwrap();
 //!
-//! # use readpassphrase_3::{readpassphrase_owned};
+//! use readpassphrase_3::{readpassphrase_owned};
 //! let _ = readpassphrase_owned(c"Pass: ", buf, RppFlags::FORCELOWER).unwrap();
 //! ```
 //!
 //! # Security
 //! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
-//! process’s address space. This crate ships with a minimal [`Zeroize`] trait that may be used
-//! for this purpose on the types taken and returned by these functions:
+//! process’s address space. It is your job to ensure that this is done with the data you own, i.e.
+//! any [`Vec`] buffer passed to [`readpassphrase`] or any [`String`] received from [`getpass`] or
+//! [`readpassphrase_owned`].
+//!
+//! This crate ships with a minimal [`Zeroize`] trait that may be used for this purpose:
 //! ```no_run
 //! # use readpassphrase_3::{
 //! #     RppFlags,
@@ -68,9 +71,8 @@
 //! ```
 //!
 //! ## Zeroizing memory
-//! This crate works well with [`zeroize`](::zeroize). For example,
-//! [`zeroize::Zeroizing`](::zeroize::Zeroizing) may be used to zero buffer
-//! contents regardless of a function’s control flow:
+//! This crate works well with the [`zeroize`] crate. For example, [`zeroize::Zeroizing`] may be
+//! used to zero buffer contents regardless of a function’s control flow:
 //! ```no_run
 //! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, getpass, readpassphrase};
 //! use zeroize::Zeroizing;
@@ -86,8 +88,8 @@
 //! # }
 //! ```
 //!
-//! If this crate’s `zeroize` feature is enabled, then its [`Zeroize`] will be replaced by the
-//! upstream [`zeroize::Zeroize`].
+//! If this crate’s `zeroize` feature is enabled, then its [`Zeroize`] will be replaced by a
+//! re-export of the upstream [`zeroize::Zeroize`].
 //!
 //! # “Mismatched types” errors
 //! The prompt strings in this API are references to [CStr], not [str]. This is because the
@@ -118,9 +120,9 @@
 
 use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 
-#[cfg(any(docsrs, not(feature = "zeroize")))]
-pub use crate::zeroize::Zeroize;
 use bitflags::bitflags;
+#[cfg(any(docsrs, not(feature = "zeroize")))]
+pub use our_zeroize::Zeroize;
 #[cfg(all(not(docsrs), feature = "zeroize"))]
 pub use zeroize::Zeroize;
 
@@ -176,7 +178,7 @@ pub enum Error {
 /// # Security
 /// The passed buffer might contain sensitive data, even if this function returns an error.
 /// Therefore it should be zeroed as soon as possible. This can be achieved, for example, with
-/// [`zeroize::Zeroizing`](::zeroize::Zeroizing):
+/// [`zeroize::Zeroizing`]:
 /// ```no_run
 /// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase};
 /// use zeroize::Zeroizing;
@@ -366,10 +368,10 @@ impl Display for Error {
 }
 
 #[cfg(any(docsrs, not(feature = "zeroize")))]
-mod zeroize {
+mod our_zeroize {
     use std::{arch::asm, mem::MaybeUninit};
 
-    /// A minimal in-crate implementation of [`zeroize::Zeroize`](::zeroize::Zeroize).
+    /// A minimal in-crate implementation of a subset of [`zeroize::Zeroize`].
     ///
     /// This provides compile-fenced memory zeroing for [`String`]s and [`Vec`]s without needing to
     /// depend on the `zeroize` crate.
