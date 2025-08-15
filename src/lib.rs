@@ -43,7 +43,7 @@
 //!
 //! # Security
 //! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
-//! process’s address space. This crate ships with a minimal [`zeroize`] module that may be used
+//! process’s address space. This crate ships with a minimal [`Zeroize`] trait that may be used
 //! for this purpose on the types taken and returned by these functions:
 //! ```no_run
 //! # use readpassphrase_3::{
@@ -51,8 +51,8 @@
 //! #     getpass,
 //! #     readpassphrase,
 //! #     readpassphrase_owned,
-//! #     zeroize::Zeroize,
 //! # };
+//! use readpassphrase_3::Zeroize;
 //! let mut pass = getpass(c"password: ").unwrap();
 //! // do_something_with(&pass);
 //! pass.zeroize();
@@ -67,9 +67,10 @@
 //! pass.zeroize();
 //! ```
 //!
-//! ## `zeroize` feature
-//! This crate works well with the [`zeroize`][1] crate; for example, [`zeroize::Zeroizing`][2] may
-//! be used to zero buffer contents regardless of a function’s control flow:
+//! ## Zeroizing memory
+//! This crate works well with [`zeroize`](::zeroize). For example,
+//! [`zeroize::Zeroizing`](::zeroize::Zeroizing) may be used to zero buffer
+//! contents regardless of a function’s control flow:
 //! ```no_run
 //! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, getpass, readpassphrase};
 //! use zeroize::Zeroizing;
@@ -85,8 +86,8 @@
 //! # }
 //! ```
 //!
-//! If this crate’s `zeroize` feature is enabled, then its [`zeroize`] will be replaced by the
-//! upstream [`zeroize::Zeroize`][3].
+//! If this crate’s `zeroize` feature is enabled, then its [`Zeroize`] will be replaced by the
+//! upstream [`zeroize::Zeroize`].
 //!
 //! # “Mismatched types” errors
 //! The prompt strings in this API are references to [CStr], not [str]. This is because the
@@ -112,14 +113,14 @@
 //! though called with [`RppFlags::empty()`].
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
-//! [1]: https://docs.rs/zeroize/latest/zeroize/
-//! [2]: https://docs.rs/zeroize/latest/zeroize/struct.Zeroizing.html
-//! [3]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html
 
 use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 
+#[cfg(any(docsrs, not(feature = "zeroize")))]
+pub use crate::zeroize::Zeroize;
 use bitflags::bitflags;
-use zeroize::Zeroize;
+#[cfg(all(not(docsrs), feature = "zeroize"))]
+pub use zeroize::Zeroize;
 
 /// Size of buffer used in [`getpass`].
 ///
@@ -173,7 +174,7 @@ pub enum Error {
 /// # Security
 /// The passed buffer might contain sensitive data, even if this function returns an error.
 /// Therefore it should be zeroed as soon as possible. This can be achieved, for example, with
-/// [`zeroize::Zeroizing`][0]:
+/// [`zeroize::Zeroizing`](::zeroize::Zeroizing):
 /// ```no_run
 /// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase};
 /// use zeroize::Zeroizing;
@@ -183,8 +184,6 @@ pub enum Error {
 /// # Ok(())
 /// # }
 /// ```
-///
-/// [0]: https://docs.rs/zeroize/latest/zeroize/struct.Zeroizing.html
 pub fn readpassphrase<'a>(
     prompt: &CStr,
     buf: &'a mut [u8],
@@ -214,7 +213,7 @@ pub fn readpassphrase<'a>(
 /// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
 /// to clear it when you are done with it:
 /// ```no_run
-/// # use readpassphrase_3::{Error, getpass, zeroize::Zeroize};
+/// # use readpassphrase_3::{Error, Zeroize, getpass};
 /// # fn main() -> Result<(), Error> {
 /// let mut pass = getpass(c"Pass: ")?;
 /// _ = pass;
@@ -252,15 +251,15 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
-/// it. This can be done via [`zeroize`], e.g.:
+/// it. This can be done via [`Zeroize`], e.g.:
 /// ```no_run
 /// # use readpassphrase_3::{
 /// #     PASSWORD_LEN,
 /// #     Error,
 /// #     RppFlags,
 /// #     readpassphrase_owned,
-/// #     zeroize::Zeroize,
 /// # };
+/// # use readpassphrase_3::Zeroize;
 /// # fn main() -> Result<(), Error> {
 /// let buf = vec![0u8; PASSWORD_LEN];
 /// let mut pass = readpassphrase_owned(c"Pass: ", buf, RppFlags::default())?;
@@ -301,26 +300,6 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Resu
     }
 }
 
-/// Securely zero the memory in `buf`.
-///
-/// This function zeroes the full capacity of `buf`, erasing any sensitive data in it. It is
-/// a simple shim for [`zeroize`] and the latter should be used instead.
-///
-/// # Usage
-/// The following are equivalent:
-/// ```no_run
-/// # use readpassphrase_3::{explicit_bzero, zeroize::Zeroize};
-/// let mut buf = vec![1u8; 1];
-/// // 1.
-/// explicit_bzero(&mut buf);
-/// // 2.
-/// buf.zeroize();
-/// ```
-#[deprecated(since = "0.6.0", note = "use zeroize::Zeroize instead")]
-pub fn explicit_bzero(buf: &mut Vec<u8>) {
-    buf.zeroize();
-}
-
 impl OwnedError {
     /// Take `buf` out of the error.
     ///
@@ -332,7 +311,7 @@ impl OwnedError {
 
 impl Drop for OwnedError {
     fn drop(&mut self) {
-        self.1.take().as_mut().map(zeroize::Zeroize::zeroize);
+        self.1.take().as_mut().map(Zeroize::zeroize);
     }
 }
 
@@ -384,20 +363,17 @@ impl Display for Error {
     }
 }
 
-/// A minimal in-crate implementation of [`zeroize::Zeroize`][0].
-///
-/// This provides compile-fenced memory zeroing for [`String`]s and [`Vec`]s without needing to
-/// depend on the `zeroize` crate.
-///
-/// If the optional `zeroize` feature is enabled, then the trait is replaced with a re-export of
-/// [`zeroize::Zeroize`] itself.
-///
-/// [0]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html
 #[cfg(any(docsrs, not(feature = "zeroize")))]
-pub mod zeroize {
+mod zeroize {
     use std::{arch::asm, mem::MaybeUninit};
 
-    /// Trait for securely erasing values from memory.
+    /// A minimal in-crate implementation of [`zeroize::Zeroize`](::zeroize::Zeroize).
+    ///
+    /// This provides compile-fenced memory zeroing for [`String`]s and [`Vec`]s without needing to
+    /// depend on the `zeroize` crate.
+    ///
+    /// If the optional `zeroize` feature is enabled, then the trait is replaced with a re-export of
+    /// `zeroize::Zeroize` itself.
     pub trait Zeroize {
         fn zeroize(&mut self);
     }
@@ -432,11 +408,6 @@ pub mod zeroize {
             );
         }
     }
-}
-
-#[cfg(all(not(docsrs), feature = "zeroize"))]
-pub mod zeroize {
-    pub use zeroize::Zeroize;
 }
 
 mod ffi {
