@@ -41,10 +41,11 @@
 //! ```no_run
 //! use readpassphrase_3::{Flags, readpassphrase};
 //! let mut buf = vec![0u8; 256];
-//! let _ = readpassphrase(c"Password: ", &mut buf, Flags::default()).unwrap();
+//! let pass: &str = readpassphrase(c"Password: ", &mut buf, Flags::default()).unwrap();
 //!
 //! use readpassphrase_3::readpassphrase_owned;
-//! let _ = readpassphrase_owned(c"Pass: ", buf, Flags::FORCELOWER).unwrap();
+//! let pass: String = readpassphrase_owned(c"Pass: ", buf, Flags::FORCELOWER).unwrap();
+//! # _ = pass;
 //! ```
 //!
 //! # Security
