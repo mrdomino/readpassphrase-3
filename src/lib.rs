@@ -30,15 +30,15 @@
 //! let _ = getpass(c"Enter your password: ").expect("failed reading password");
 //! ```
 //!
-//! If you need to pass [flags](RppFlags) or to control the buffer size, then you can use
+//! If you need to pass [`Flags`] or to control the buffer size, then you can use
 //! [`readpassphrase`] or [`readpassphrase_owned`] depending on your ownership requirements:
 //! ```no_run
-//! use readpassphrase_3::{RppFlags, readpassphrase};
+//! use readpassphrase_3::{Flags, readpassphrase};
 //! let mut buf = vec![0u8; 256];
-//! let _ = readpassphrase(c"Password: ", &mut buf, RppFlags::default()).unwrap();
+//! let _ = readpassphrase(c"Password: ", &mut buf, Flags::default()).unwrap();
 //!
-//! use readpassphrase_3::{readpassphrase_owned};
-//! let _ = readpassphrase_owned(c"Pass: ", buf, RppFlags::FORCELOWER).unwrap();
+//! use readpassphrase_3::readpassphrase_owned;
+//! let _ = readpassphrase_owned(c"Pass: ", buf, Flags::FORCELOWER).unwrap();
 //! ```
 //!
 //! # Security
@@ -49,23 +49,18 @@
 //!
 //! This crate ships with a minimal [`Zeroize`] trait that may be used for this purpose:
 //! ```no_run
-//! # use readpassphrase_3::{
-//! #     RppFlags,
-//! #     getpass,
-//! #     readpassphrase,
-//! #     readpassphrase_owned,
-//! # };
+//! # use readpassphrase_3::{Flags, getpass, readpassphrase, readpassphrase_owned};
 //! use readpassphrase_3::Zeroize;
 //! let mut pass = getpass(c"password: ").unwrap();
 //! // do_something_with(&pass);
 //! pass.zeroize();
 //!
 //! let mut buf = vec![0u8; 256];
-//! let res = readpassphrase(c"password: ", &mut buf, RppFlags::empty());
+//! let res = readpassphrase(c"password: ", &mut buf, Flags::empty());
 //! // match_something_on(res);
 //! buf.zeroize();
 //!
-//! let mut pass = readpassphrase_owned(c"password: ", buf, RppFlags::empty()).unwrap();
+//! let mut pass = readpassphrase_owned(c"password: ", buf, Flags::empty()).unwrap();
 //! // do_something_with(&pass);
 //! pass.zeroize();
 //! ```
@@ -74,11 +69,11 @@
 //! This crate works well with the [`::zeroize`] crate. For example, [`::zeroize::Zeroizing`] may
 //! be used to zero buffer contents regardless of a function’s control flow:
 //! ```no_run
-//! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, getpass, readpassphrase};
+//! # use readpassphrase_3::{Error, Flags, PASSWORD_LEN, getpass, readpassphrase};
 //! use zeroize::Zeroizing;
 //! # fn main() -> Result<(), Error> {
 //! let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
-//! let pass = readpassphrase(c"pass: ", &mut buf, RppFlags::REQUIRE_TTY)?;
+//! let pass = readpassphrase(c"pass: ", &mut buf, Flags::REQUIRE_TTY)?;
 //! // do_something_that_can_fail_with(pass)?;
 //!
 //! // Or alternatively:
@@ -114,7 +109,7 @@
 //! # Windows Limitations
 //! The Windows implementation of `readpassphrase(3)` that we are using does not yet support UTF-8
 //! in prompts; they must be ASCII. It also does not yet support flags, and always behaves as
-//! though called with [`RppFlags::empty()`].
+//! though called with [`Flags::empty()`].
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
@@ -136,15 +131,15 @@ bitflags! {
     /// Flags for controlling readpassphrase.
     ///
     /// The default flag `ECHO_OFF` is not represented here because `bitflags` [recommends against
-    /// zero-bit flags][0]; it may be specified as either [`RppFlags::empty()`] or
-    /// [`RppFlags::default()`].
+    /// zero-bit flags][0]; it may be specified as either [`Flags::empty()`] or
+    /// [`Flags::default()`].
     ///
     /// Note that the Windows `readpassphrase(3)` implementation always acts like it has been
     /// passed `ECHO_OFF`, i.e., the flags are ignored.
     ///
     /// [0]: https://docs.rs/bitflags/latest/bitflags/#zero-bit-flags
     #[derive(Default)]
-    pub struct RppFlags: i32 {
+    pub struct Flags: i32 {
         /// Leave echo on.
         const ECHO_ON     = 0x01;
         /// Fail if there is no tty.
@@ -159,6 +154,9 @@ bitflags! {
         const STDIN       = 0x20;
     }
 }
+
+#[deprecated(since = "0.8.0", note = "Use Flags instead")]
+pub type RppFlags = Flags;
 
 /// Errors that can occur in readpassphrase.
 #[derive(Debug)]
@@ -180,18 +178,18 @@ pub enum Error {
 /// Therefore it should be zeroed as soon as possible. This can be achieved, for example, with
 /// [`::zeroize::Zeroizing`]:
 /// ```no_run
-/// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase};
+/// # use readpassphrase_3::{PASSWORD_LEN, Error, Flags, readpassphrase};
 /// use zeroize::Zeroizing;
 /// # fn main() -> Result<(), Error> {
 /// let mut buf = Zeroizing::new(vec![0u8; PASSWORD_LEN]);
-/// let pass = readpassphrase(c"Pass: ", &mut buf, RppFlags::default())?;
+/// let pass = readpassphrase(c"Pass: ", &mut buf, Flags::default())?;
 /// # Ok(())
 /// # }
 /// ```
 pub fn readpassphrase<'a>(
     prompt: &CStr,
     buf: &'a mut [u8],
-    flags: RppFlags,
+    flags: Flags,
 ) -> Result<&'a str, Error> {
     unsafe {
         let res = ffi::readpassphrase(
@@ -229,7 +227,7 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
     Ok(readpassphrase_owned(
         prompt,
         vec![0u8; PASSWORD_LEN],
-        RppFlags::empty(),
+        Flags::empty(),
     )?)
 }
 
@@ -260,13 +258,13 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 /// # use readpassphrase_3::{
 /// #     PASSWORD_LEN,
 /// #     Error,
-/// #     RppFlags,
+/// #     Flags,
 /// #     readpassphrase_owned,
 /// # };
 /// # use readpassphrase_3::Zeroize;
 /// # fn main() -> Result<(), Error> {
 /// let buf = vec![0u8; PASSWORD_LEN];
-/// let mut pass = readpassphrase_owned(c"Pass: ", buf, RppFlags::default())?;
+/// let mut pass = readpassphrase_owned(c"Pass: ", buf, Flags::default())?;
 /// _ = pass;
 /// pass.zeroize();
 /// # Ok(())
@@ -275,7 +273,7 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 pub fn readpassphrase_owned(
     prompt: &CStr,
     mut buf: Vec<u8>,
-    flags: RppFlags,
+    flags: Flags,
 ) -> Result<String, OwnedError> {
     readpassphrase_mut(prompt, &mut buf, flags).map_err(|e| {
         buf.clear();
@@ -287,7 +285,7 @@ pub fn readpassphrase_owned(
 // reusing `buf`’s memory on success. This function serves to make it possible to write
 // `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
 // behavior by constructing a maybe-uninitialized slice.
-fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: RppFlags) -> Result<String, Error> {
+fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
     unsafe {
         let res = ffi::readpassphrase(
             prompt.as_ptr(),
