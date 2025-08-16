@@ -30,7 +30,7 @@
 //! let _ = getpass(c"Enter your password: ").expect("failed reading password");
 //! ```
 //!
-//! If you need to pass [`RppFlags`] or to control the buffer size, then you can use
+//! If you need to pass [flags](RppFlags) or to control the buffer size, then you can use
 //! [`readpassphrase`] or [`readpassphrase_owned`] depending on your ownership requirements:
 //! ```no_run
 //! use readpassphrase_3::{RppFlags, readpassphrase};
