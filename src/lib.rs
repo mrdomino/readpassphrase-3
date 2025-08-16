@@ -22,6 +22,12 @@
 
 //! Lightweight, easy-to-use wrapper around the C [`readpassphrase(3)`][0] function.
 //!
+//! From the man page:
+//! > The `readpassphrase()` function displays a prompt to, and reads in a passphrase from,
+//! > `/dev/tty`. If this file is inaccessible and the [`RPP_REQUIRE_TTY`](Flags::REQUIRE_TTY) flag
+//! > is not set, `readpassphrase()` displays the prompt on the standard error output and reads
+//! > from the standard input.
+//!
 //! # Usage
 //! For the simplest of cases, where you would just like to read a password from the console into a
 //! [`String`] to use elsewhere, you can use [`getpass`]:
@@ -42,8 +48,11 @@
 //! ```
 //!
 //! # Security
-//! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
-//! process’s address space. It is your job to ensure that this is done with the data you own, i.e.
+//! The [`readpassphrase(3)` man page][0] says:
+//! > The calling process should zero the passphrase as soon as possible to avoid leaving the
+//! > cleartext passphrase visible in the process's address space.
+//!
+//! It is your job to ensure that this is done with the data you own, i.e.
 //! any [`Vec`] passed to [`readpassphrase`] or any [`String`] received from [`getpass`] or
 //! [`readpassphrase_owned`].
 //!
