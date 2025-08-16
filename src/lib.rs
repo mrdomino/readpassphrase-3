@@ -44,7 +44,7 @@
 //! # Security
 //! Sensitive data should be zeroed as soon as possible to avoid leaving it visible in the
 //! process’s address space. It is your job to ensure that this is done with the data you own, i.e.
-//! any [`Vec`] buffer passed to [`readpassphrase`] or any [`String`] received from [`getpass`] or
+//! any [`Vec`] passed to [`readpassphrase`] or any [`String`] received from [`getpass`] or
 //! [`readpassphrase_owned`].
 //!
 //! This crate ships with a minimal [`Zeroize`] trait that may be used for this purpose:
