@@ -71,8 +71,8 @@
 //! ```
 //!
 //! ## Zeroizing memory
-//! This crate works well with the [`zeroize`] crate. For example, [`zeroize::Zeroizing`] may be
-//! used to zero buffer contents regardless of a function’s control flow:
+//! This crate works well with the [`::zeroize`] crate. For example, [`::zeroize::Zeroizing`] may
+//! be used to zero buffer contents regardless of a function’s control flow:
 //! ```no_run
 //! # use readpassphrase_3::{Error, PASSWORD_LEN, RppFlags, getpass, readpassphrase};
 //! use zeroize::Zeroizing;
@@ -120,11 +120,11 @@
 
 use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
 
+#[cfg(all(not(docsrs), feature = "zeroize"))]
+pub use ::zeroize::Zeroize;
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
 pub use our_zeroize::Zeroize;
-#[cfg(all(not(docsrs), feature = "zeroize"))]
-pub use zeroize::Zeroize;
 
 /// Size of buffer used in [`getpass`].
 ///
@@ -178,7 +178,7 @@ pub enum Error {
 /// # Security
 /// The passed buffer might contain sensitive data, even if this function returns an error.
 /// Therefore it should be zeroed as soon as possible. This can be achieved, for example, with
-/// [`zeroize::Zeroizing`]:
+/// [`::zeroize::Zeroizing`]:
 /// ```no_run
 /// # use readpassphrase_3::{PASSWORD_LEN, Error, RppFlags, readpassphrase};
 /// use zeroize::Zeroizing;
@@ -412,6 +412,14 @@ mod our_zeroize {
             );
         }
     }
+}
+
+#[deprecated(
+    since = "0.8.0",
+    note = "use top-level Zeroize or crate zeroize instead"
+)]
+pub mod zeroize {
+    pub use crate::Zeroize;
 }
 
 mod ffi {
