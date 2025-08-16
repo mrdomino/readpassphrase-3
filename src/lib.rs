@@ -247,7 +247,7 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 #[derive(Debug)]
 pub struct OwnedError(Error, Option<Vec<u8>>);
 
-/// Reads a passphrase using `readpassphrase(3)`, returning a [`String`] reusing `buf`’s memory.
+/// Reads a passphrase using `readpassphrase(3)`, returning `buf` as a [`String`].
 ///
 /// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
 /// is longer, it will be truncated.
