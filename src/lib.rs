@@ -39,8 +39,8 @@
 //! If you need to pass [`Flags`] or to control the buffer size, then you can use
 //! [`readpassphrase`] or [`readpassphrase_owned`] depending on your ownership requirements:
 //! ```no_run
-//! use readpassphrase_3::{Flags, readpassphrase};
 //! let mut buf = vec![0u8; 256];
+//! use readpassphrase_3::{Flags, readpassphrase};
 //! let pass: &str = readpassphrase(c"Password: ", &mut buf, Flags::default()).unwrap();
 //!
 //! use readpassphrase_3::readpassphrase_owned;
