@@ -25,4 +25,6 @@ fn main() {
             println!("cargo:rerun-if-changed=csrc/readpassphrase.h");
         }
     }
+    #[cfg(not(feature = "cc"))]
+    println!("cargo:rerun-if-changed=build.rs");
 }
