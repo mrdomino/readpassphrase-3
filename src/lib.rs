@@ -390,8 +390,9 @@ mod our_zeroize {
     impl Zeroize for Vec<u8> {
         fn zeroize(&mut self) {
             self.clear();
-            self.spare_capacity_mut().fill(MaybeUninit::zeroed());
-            compile_fence(self);
+            let buf = self.spare_capacity_mut();
+            buf.fill(MaybeUninit::zeroed());
+            compile_fence(buf);
         }
     }
 
@@ -408,7 +409,7 @@ mod our_zeroize {
         }
     }
 
-    fn compile_fence(buf: &[u8]) {
+    fn compile_fence<T>(buf: &[T]) {
         unsafe {
             asm!(
                 "/* {ptr} */",
