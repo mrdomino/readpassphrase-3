@@ -356,10 +356,10 @@ impl Display for OwnedError {
 
 impl core::error::Error for Error {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            Error::Io(e) => Some(e),
-            Error::Utf8(e) => Some(e),
-        }
+        Some(match self {
+            Error::Io(e) => e,
+            Error::Utf8(e) => e,
+        })
     }
 }
 
