@@ -11,7 +11,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     #[cfg(not(feature = "cc"))]
     if env::var_os("CARGO_CFG_TARGET_OS").unwrap_or_default() == "linux" {
-        println!("cargo:rustc-link-lib=bsd");
+        println!("cargo:rustc-link-lib=static:-bundle=bsd");
     }
     #[cfg(feature = "cc")]
     {
