@@ -5,12 +5,16 @@
 //
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
+use std::env;
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    #[cfg(not(feature = "cc"))]
+    if env::var_os("CARGO_CFG_TARGET_OS").unwrap_or_default() == "linux" {
+        println!("cargo:rustc-link-lib=bsd");
+    }
     #[cfg(feature = "cc")]
     {
-        use std::env;
-
         if env::var_os("CARGO_CFG_WINDOWS").is_some() {
             cc::Build::new()
                 .file("csrc/read-password-w32.c")
@@ -25,6 +29,4 @@ fn main() {
             println!("cargo:rerun-if-changed=csrc/readpassphrase.h");
         }
     }
-    #[cfg(not(feature = "cc"))]
-    println!("cargo:rerun-if-changed=build.rs");
 }
