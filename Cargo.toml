@@ -2,7 +2,7 @@
 name = "readpassphrase-3"
 version = "0.9.3-pre.0"
 edition = "2021"
-rust-version = "1.72.0"
+rust-version = "1.77.0"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
 repository = "https://github.com/mrdomino/readpassphrase-3"
