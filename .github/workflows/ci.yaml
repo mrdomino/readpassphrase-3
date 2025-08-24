@@ -25,6 +25,9 @@ jobs:
           else
             echo suffix=
           fi >> $GITHUB_ENV
+          if [[ ${{ matrix.os }} = ubuntu ]]; then
+            sudo sh -c 'apt-get update && apt-get -y install libbsd-dev'
+          fi
       - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
