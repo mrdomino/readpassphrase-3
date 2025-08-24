@@ -62,6 +62,7 @@ jobs:
     environment: crates-io
     steps:
       - uses: actions/checkout@v5
+      - run: cargo generate-lockfile && cat Cargo.lock
       - run: cargo publish --dry-run
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
