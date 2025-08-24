@@ -10,8 +10,19 @@ use std::env;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     #[cfg(not(feature = "cc"))]
-    if env::var_os("CARGO_CFG_TARGET_OS").unwrap_or_default() == "linux" {
-        println!("cargo:rustc-link-lib=static:-bundle=bsd");
+    {
+        use std::process::Command;
+
+        if env::var_os("CARGO_CFG_TARGET_OS").unwrap_or_default() == "linux" {
+            if Command::new("pkg-config")
+                .args(["--exists", "libbsd"])
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false)
+            {
+                println!("cargo:rustc-link-lib=static:-bundle=bsd");
+            }
+        }
     }
     #[cfg(feature = "cc")]
     {
