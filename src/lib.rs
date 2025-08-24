@@ -123,7 +123,13 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{ffi::CStr, fmt::Display, io, mem, str::Utf8Error};
+use std::{
+    error,
+    ffi::CStr,
+    fmt::{self, Display},
+    io, mem,
+    str::Utf8Error,
+};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -342,20 +348,20 @@ impl From<Utf8Error> for Error {
     }
 }
 
-impl std::error::Error for OwnedError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl error::Error for OwnedError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         Some(&self.0)
     }
 }
 
 impl Display for OwnedError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         Some(match self {
             Error::Io(e) => e,
             Error::Utf8(e) => e,
@@ -364,7 +370,7 @@ impl std::error::Error for Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Io(e) => e.fmt(f),
             Error::Utf8(e) => e.fmt(f),
