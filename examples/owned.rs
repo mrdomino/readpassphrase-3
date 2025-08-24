@@ -6,7 +6,7 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
 
-use readpassphrase_3::{Error, Flags, PASSWORD_LEN, readpassphrase, readpassphrase_owned};
+use readpassphrase_3::{readpassphrase, readpassphrase_owned, Error, Flags, PASSWORD_LEN};
 use zeroize::{Zeroize, Zeroizing};
 
 fn main() -> Result<(), Error> {

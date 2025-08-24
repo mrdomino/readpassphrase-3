@@ -8,7 +8,7 @@
 
 use std::process::exit;
 
-use readpassphrase_3::{Flags as RpFlags, PASSWORD_LEN, readpassphrase};
+use readpassphrase_3::{readpassphrase, Flags as RpFlags, PASSWORD_LEN};
 use zeroize::Zeroizing;
 
 fn main() {

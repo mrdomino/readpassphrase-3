@@ -342,7 +342,7 @@ impl From<Utf8Error> for Error {
     }
 }
 
-impl core::error::Error for OwnedError {
+impl std::error::Error for OwnedError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.0)
     }
@@ -354,8 +354,8 @@ impl Display for OwnedError {
     }
 }
 
-impl core::error::Error for Error {
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(match self {
             Error::Io(e) => e,
             Error::Utf8(e) => e,
@@ -423,8 +423,8 @@ mod our_zeroize {
 mod ffi {
     use std::ffi::{c_char, c_int};
 
-    unsafe extern "C" {
-        pub(crate) unsafe fn readpassphrase(
+    extern "C" {
+        pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
             bufsiz: usize,
