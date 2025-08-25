@@ -1,10 +1,18 @@
-// Copyright 2025 Steven Dee.
+// Copyright 2025 Steven Dee
 //
-// This project is made available under a BSD-compatible license. See the
-// LICENSE file in the project root for details.
+// Licensed under the [Apache License, Version 2.0][0] or the [MIT license][1],
+// at your option.
 //
-// The readpassphrase source and header are copyright 2000-2002, 2007, 2010
-// Todd C. Miller.
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// [0]: https://www.apache.org/licenses/LICENSE-2.0
+// [1]: https://opensource.org/licenses/MIT
 
 use std::process::exit;
 
