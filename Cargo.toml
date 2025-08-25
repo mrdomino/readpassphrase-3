@@ -31,7 +31,7 @@ path = "examples/owned.rs"
 
 [features]
 default = ["vendored"]
-libbsd = []
+libbsd = ["dep:pkg-config"]
 vendored = ["dep:cc"]
 zeroize = ["dep:zeroize"]
 
@@ -41,6 +41,7 @@ zeroize = { version = "1", optional = true }
 
 [build-dependencies]
 cc = { version = "1", optional = true }
+pkg-config = { version = "0.3", optional = true }
 
 [dev-dependencies]
 zeroize = "1"

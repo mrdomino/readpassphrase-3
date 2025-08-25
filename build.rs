@@ -10,24 +10,11 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     #[cfg(feature = "libbsd")]
     {
-        // Rerun if any environment variable affecting pkg-config changes
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_DEBUG_SPEW");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_TOP_BUILD_DIR");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_DISABLE_UNINSTALLED");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_SYSTEM_CFLAGS");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_SYSTEM_LIBS");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR");
-        println!("cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR");
-
-        if std::process::Command::new("pkg-config")
-            .args(["--exists", "libbsd"])
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-        {
-            println!("cargo:rustc-link-lib=static:-bundle=bsd");
-        }
+        pkg_config::Config::new()
+            .atleast_version("0.9.0")
+            .statik(true)
+            .probe("libbsd")
+            .unwrap();
     }
     #[cfg(all(not(feature = "libbsd"), feature = "vendored"))]
     {
