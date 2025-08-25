@@ -29,7 +29,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-      - run: cargo build --all-targets
+      - run: cargo build --all-targets -vv
       - uses: actions/upload-artifact@v4
         with:
           name: pass-${{ matrix.os }}-${{ matrix.toolchain }}
