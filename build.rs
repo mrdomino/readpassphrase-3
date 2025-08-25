@@ -28,7 +28,7 @@ fn main() {
         pkg_config::Config::new()
             .atleast_version("0.9.0")
             .statik(true)
-            .probe("bsd")
+            .probe("libbsd")
             .unwrap();
     }
 }
