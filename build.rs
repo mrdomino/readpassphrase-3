@@ -1,43 +1,34 @@
-// Copyright 2025 Steven Dee.
+// Copyright 2025 Steven Dee
 //
-// This project is made available under a BSD-compatible license. See the
-// LICENSE file in the project root for details.
+// Licensed under the [Apache License, Version 2.0][0] or the [MIT license][1],
+// at your option.
 //
-// The readpassphrase source and header are copyright 2000-2002, 2007, 2010
-// Todd C. Miller.
-use std::env;
+// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+// [0]: https://www.apache.org/licenses/LICENSE-2.0
+// [1]: https://opensource.org/licenses/MIT
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    #[cfg(not(feature = "cc"))]
+    #[cfg(target_os = "windows")]
     {
-        use std::process::Command;
-
-        if env::var_os("CARGO_CFG_TARGET_OS").unwrap_or_default() == "linux" {
-            if Command::new("pkg-config")
-                .args(["--exists", "libbsd"])
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-            {
-                println!("cargo:rustc-link-lib=static:-bundle=bsd");
-            }
-        }
+        cc::Build::new()
+            .file("csrc/read-password-w32.c")
+            .compile("read-password-w32");
+        println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
     }
-    #[cfg(feature = "cc")]
+    #[cfg(target_os = "linux")]
     {
-        if env::var_os("CARGO_CFG_WINDOWS").is_some() {
-            cc::Build::new()
-                .file("csrc/read-password-w32.c")
-                .compile("read-password-w32");
-            println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
-        } else {
-            cc::Build::new()
-                .file("csrc/readpassphrase.c")
-                .include("csrc")
-                .compile("readpassphrase");
-            println!("cargo:rerun-if-changed=csrc/readpassphrase.c");
-            println!("cargo:rerun-if-changed=csrc/readpassphrase.h");
-        }
+        pkg_config::Config::new()
+            .atleast_version("0.9.0")
+            .statik(true)
+            .probe("bsd")
+            .unwrap();
     }
 }
