@@ -47,7 +47,7 @@ jobs:
 
   lint:
     name: cargo fmt && cargo clippy
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
