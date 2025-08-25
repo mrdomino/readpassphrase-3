@@ -5,28 +5,33 @@
 //
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
-use std::env;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    #[cfg(not(feature = "cc"))]
+    #[cfg(feature = "libbsd")]
     {
-        use std::process::Command;
+        // Rerun if any environment variable affecting pkg-config changes
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_DEBUG_SPEW");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_TOP_BUILD_DIR");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_DISABLE_UNINSTALLED");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_SYSTEM_CFLAGS");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_ALLOW_SYSTEM_LIBS");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR");
+        println!("cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR");
 
-        if env::var_os("CARGO_CFG_TARGET_OS").unwrap_or_default() == "linux" {
-            if Command::new("pkg-config")
-                .args(["--exists", "libbsd"])
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false)
-            {
-                println!("cargo:rustc-link-lib=static:-bundle=bsd");
-            }
+        if std::process::Command::new("pkg-config")
+            .args(["--exists", "libbsd"])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+        {
+            println!("cargo:rustc-link-lib=static:-bundle=bsd");
         }
     }
-    #[cfg(feature = "cc")]
+    #[cfg(all(not(feature = "libbsd"), feature = "vendored"))]
     {
-        if env::var_os("CARGO_CFG_WINDOWS").is_some() {
+        if std::env::var_os("CARGO_CFG_WINDOWS").is_some() {
             cc::Build::new()
                 .file("csrc/read-password-w32.c")
                 .compile("read-password-w32");

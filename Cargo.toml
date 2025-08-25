@@ -30,7 +30,9 @@ name = "owned"
 path = "examples/owned.rs"
 
 [features]
-default = ["cc"]
+default = ["vendored"]
+libbsd = []
+vendored = ["dep:cc"]
 
 [dependencies]
 bitflags = "2"
