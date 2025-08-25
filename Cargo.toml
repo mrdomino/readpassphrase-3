@@ -33,6 +33,7 @@ path = "examples/owned.rs"
 default = ["vendored"]
 libbsd = []
 vendored = ["dep:cc"]
+zeroize = ["dep:zeroize"]
 
 [dependencies]
 bitflags = "2"
