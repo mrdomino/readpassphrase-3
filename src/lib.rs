@@ -123,13 +123,7 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{
-    error,
-    ffi::CStr,
-    fmt::{self, Display},
-    io, mem,
-    str::Utf8Error,
-};
+use std::{error, ffi::CStr, fmt, io, mem, str::Utf8Error};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -354,7 +348,7 @@ impl error::Error for OwnedError {
     }
 }
 
-impl Display for OwnedError {
+impl fmt::Display for OwnedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
@@ -369,7 +363,7 @@ impl error::Error for Error {
     }
 }
 
-impl Display for Error {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Io(e) => e.fmt(f),
