@@ -228,11 +228,8 @@ pub fn readpassphrase<'a>(
 /// # }
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
-    Ok(readpassphrase_owned(
-        prompt,
-        vec![0u8; PASSWORD_LEN],
-        Flags::empty(),
-    )?)
+    let buf = vec![0u8; PASSWORD_LEN];
+    Ok(readpassphrase_owned(prompt, buf, Flags::empty())?)
 }
 
 /// An [`Error`] from [`readpassphrase_owned`] containing the passed buffer.
