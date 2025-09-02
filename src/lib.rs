@@ -295,6 +295,13 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
+    debug_assert!(
+        buf.contains(&0)
+            || buf
+                .spare_capacity_mut()
+                .iter()
+                .any(|b| { unsafe { b.assume_init() == 0 } })
+    );
     let res = unsafe { CStr::from_ptr(buf_ptr) }.to_str()?;
     assert!(res.len() < bufsiz);
     unsafe {
