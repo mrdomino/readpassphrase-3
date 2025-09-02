@@ -198,16 +198,13 @@ pub fn readpassphrase<'a>(
     buf: &'a mut [u8],
     flags: Flags,
 ) -> Result<&'a str, Error> {
-    unsafe {
-        let res = ffi::readpassphrase(
-            prompt.as_ptr(),
-            buf.as_mut_ptr().cast(),
-            buf.len(),
-            flags.bits(),
-        );
-        if res.is_null() {
-            return Err(io::Error::last_os_error().into());
-        }
+    let prompt = prompt.as_ptr();
+    let buf_ptr = buf.as_mut_ptr().cast();
+    let bufsiz = buf.len();
+    let flags = flags.bits();
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
+    if res.is_null() {
+        return Err(io::Error::last_os_error().into());
     }
     Ok(CStr::from_bytes_until_nul(buf).unwrap().to_str()?)
 }
@@ -293,20 +290,20 @@ pub fn readpassphrase_owned(
 // `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
 // behavior by constructing a maybe-uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
-    unsafe {
-        let res = ffi::readpassphrase(
-            prompt.as_ptr(),
-            buf.as_mut_ptr().cast(),
-            buf.capacity(),
-            flags.bits(),
-        );
-        if res.is_null() {
-            return Err(io::Error::last_os_error().into());
-        }
-        let res = CStr::from_ptr(res).to_str()?;
-        buf.set_len(res.len());
-        Ok(String::from_utf8_unchecked(mem::take(buf)))
+    let prompt = prompt.as_ptr();
+    let buf_ptr = buf.as_mut_ptr().cast();
+    let bufsiz = buf.capacity();
+    let flags = flags.bits();
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
+    if res.is_null() {
+        return Err(io::Error::last_os_error().into());
     }
+    let res = unsafe { CStr::from_ptr(res) }.to_str()?;
+    unsafe {
+        buf.set_len(res.len());
+    }
+    let buf = mem::take(buf);
+    Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
 impl OwnedError {
