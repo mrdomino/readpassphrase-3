@@ -289,6 +289,17 @@ pub fn readpassphrase_owned(
 // `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
 // behavior by constructing a maybe-uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
+    // If we could construct a `&[u8]` out of potentially uninitialized memory, then this whole
+    // function could just be:
+    // ```
+    // let buf_slice = unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr(), buf.capacity()) };
+    // let res = readpassphrase(prompt, buf_slice, flags)?;
+    // unsafe {
+    //     buf.set_len(res.len());
+    // }
+    // Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
+    // ```
+    // We do the following because we cannot.
     let prompt = prompt.as_ptr();
     let buf_ptr = buf.as_mut_ptr().cast::<mem::MaybeUninit<u8>>();
     let bufsiz = buf.capacity();
@@ -299,22 +310,32 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
+    // SAFETY: `buf_ptr` is a single aligned allocation of size `bufsiz`, `MaybeUninit<T>` is
+    // properly initialized, and the data will not be mutated for this slice’s lifetime.
     let maybe_uninit_slice = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
     let null_pos = maybe_uninit_slice
         .iter()
-        .position(|&b| unsafe { b.assume_init() == 0 })
+        .position(|&b| unsafe {
+            // SAFETY: `readpassphrase(3)` must have either returned null or initialized `buf_ptr`
+            // to a byte sequence ending in a nul byte. (NB. this is required of any
+            // `readpassphrase(3)` implementation, and if this ever does not hold, UB may result.)
+            b.assume_init() == 0
+        })
         .unwrap(); // `ffi::readpassphrase` contract guarantees null terminator on success
+
+    // SAFETY: `buf_ptr` is a single aligned allocation of at least `null_pos + 1`. We already
+    // assumed that `buf` was initialized up through the first nul byte.
     let bytes = unsafe { slice::from_raw_parts(buf_ptr.cast(), null_pos + 1) };
     let res = CStr::from_bytes_with_nul(bytes)
         .unwrap() // guaranteed valid since we just found the null terminator
         .to_str()?;
-    // SAFETY: we just checked `res.len()` against capacity and we assume `buf` has been
-    // initialized up through `res.len()`.
+    // SAFETY: `res.len()` is less than or equal to `buf.capacity()` by construction, and we
+    // assume `buf` was initialized up through the first nul byte.
     unsafe {
         buf.set_len(res.len());
     }
     let buf = mem::take(buf);
-    // SAFETY: `CStr::to_str` has just confirmed that these bytes are valid UTF-8.
+    // SAFETY: `CStr::to_str` has just confirmed that the bytes are valid UTF-8.
     Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
