@@ -123,7 +123,7 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{error, ffi::CStr, fmt, io, mem, str::Utf8Error};
+use std::{error, ffi::CStr, fmt, io, mem, slice, str::Utf8Error};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -290,27 +290,24 @@ pub fn readpassphrase_owned(
 // behavior by constructing a maybe-uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
     let prompt = prompt.as_ptr();
-    let buf_ptr = buf.as_mut_ptr().cast();
+    let buf_ptr = buf.as_mut_ptr().cast::<mem::MaybeUninit<u8>>();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
     // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
     // points to an allocation of at least `bufsiz` bytes.
-    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
-    debug_assert!(
-        buf.contains(&0)
-            || buf.spare_capacity_mut().iter().any(|b| {
-                // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized
-                // `buf` to a byte sequence ending in a nul byte.
-                unsafe { b.assume_init() == 0 }
-            })
-    );
-    // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized `buf` to a byte
-    // sequence ending ending in a nul byte.
-    let res = unsafe { CStr::from_ptr(buf_ptr) }.to_str()?;
-    assert!(res.len() < bufsiz);
+    let maybe_uninit_slice = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
+    let null_pos = maybe_uninit_slice
+        .iter()
+        .position(|&b| unsafe { b.assume_init() == 0 })
+        .unwrap(); // `ffi::readpassphrase` contract guarantees null terminator on success
+    let bytes = unsafe { slice::from_raw_parts(buf_ptr.cast(), null_pos + 1) };
+    let res = CStr::from_bytes_with_nul(bytes)
+        .unwrap() // guaranteed valid since we just found the null terminator
+        .to_str()?;
     // SAFETY: we just checked `res.len()` against capacity and we assume `buf` has been
     // initialized up through `res.len()`.
     unsafe {
