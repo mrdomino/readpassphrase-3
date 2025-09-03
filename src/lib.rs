@@ -226,7 +226,7 @@ pub fn readpassphrase<'a>(
 /// # }
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
-    let buf = vec![0u8; PASSWORD_LEN];
+    let buf = Vec::with_capacity(PASSWORD_LEN);
     Ok(readpassphrase_owned(prompt, buf, Flags::empty())?)
 }
 
