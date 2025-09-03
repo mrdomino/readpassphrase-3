@@ -299,44 +299,38 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
     // }
     // Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
     // ```
-    // We do the following because we cannot.
     let prompt = prompt.as_ptr();
-    let buf_ptr = buf.as_mut_ptr().cast::<mem::MaybeUninit<u8>>();
+    let buf_ptr: *mut mem::MaybeUninit<u8> = buf.as_mut_ptr().cast();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
-    // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
-    // points to an allocation of at least `bufsiz` bytes.
+    // SAFETY: as in `crate::readpassphrase`.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
-    // SAFETY: `buf_ptr` is a single aligned allocation of size `bufsiz`, `MaybeUninit<T>` is
-    // properly initialized, and the data will not be mutated for this slice’s lifetime.
-    let maybe_uninit_slice = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
-    let null_pos = maybe_uninit_slice
+
+    // SAFETY: `buf` will not be mutated from here on.
+    let buf_uninit = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
+    let null_pos = buf_uninit
         .iter()
         .position(|&b| unsafe {
-            // SAFETY: `readpassphrase(3)` must have either returned null or initialized `buf_ptr`
-            // to a byte sequence ending in a nul byte. (NB. this is required of any
-            // `readpassphrase(3)` implementation, and if this ever does not hold, UB may result.)
+            // We assume that `readpassphrase(3)` either returns null or initializes `buf`
+            // to a sequence of bytes ending in a zero byte. This assumption is unchecked.
             b.assume_init() == 0
         })
-        .unwrap(); // `ffi::readpassphrase` contract guarantees null terminator on success
-
-    // SAFETY: `buf_ptr` is a single aligned allocation of at least `null_pos + 1`. We already
-    // assumed that `buf` was initialized up through the first nul byte, which is at `null_pos`.
-    let res_str = unsafe {
+        .unwrap();
+    // SAFETY: just confirmed that `buf` has its first nul byte at `null_pos < bufsiz`.
+    let res = unsafe {
         let bytes = slice::from_raw_parts(buf_ptr.cast(), null_pos + 1);
         CStr::from_bytes_with_nul_unchecked(bytes)
     }
     .to_str()?;
-    // SAFETY: `res_str.len()` is less than or equal to `buf.capacity()` by construction, and we
-    // assume `buf` was initialized up through the first nul byte.
+    // SAFETY: `buf` is initialized up to `res.len() == null_pos < bufsiz == buf.capacity()`.
     unsafe {
-        buf.set_len(res_str.len());
+        buf.set_len(res.len());
     }
     let buf = mem::take(buf);
-    // SAFETY: `CStr::to_str` has just confirmed that the bytes are valid UTF-8.
+    // SAFETY: already confirmed via `CStr::to_str`.
     Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
@@ -429,7 +423,7 @@ mod our_zeroize {
 
     impl Zeroize for String {
         fn zeroize(&mut self) {
-            // SAFETY: zero is valid UTF-8.
+            // SAFETY: we clear the string.
             unsafe { self.as_mut_vec() }.zeroize();
         }
     }
@@ -442,7 +436,6 @@ mod our_zeroize {
     }
 
     fn compile_fence<T>(buf: &[T]) {
-        // SAFETY: noop.
         unsafe {
             asm!(
                 "/* {ptr} */",
@@ -457,15 +450,6 @@ mod ffi {
     use std::ffi::{c_char, c_int};
 
     extern "C" {
-        /// Interface to the libc `readpassphrase(3)` function.
-        ///
-        /// The caller may assume that this function either returns null or partially initializes
-        /// `buf` to a sequence of bytes ending in a nul byte.
-        ///
-        /// # Safety
-        /// The caller must ensure that `prompt` refers to a valid nul-terminated UTF-8
-        /// (non-Windows) or ASCII (Windows) byte sequence, and that `buf` refers to an allocation
-        /// of at least `bufsiz` bytes.
         pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
