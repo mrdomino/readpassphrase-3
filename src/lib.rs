@@ -173,7 +173,7 @@ pub enum Error {
 /// Reads a passphrase using `readpassphrase(3)`, returning a [`&str`](str).
 ///
 /// This function reads a password of up to `buf.len() - 1` bytes into `buf`. If the entered
-/// password is longer, it is truncated to the maximum length. If `readpasspharse(3)` itself fails,
+/// password is longer, it is truncated to the maximum length. If `readpassphrase(3)` itself fails,
 /// or if the entered password is not valid UTF-8, then [`Error`] is returned.
 ///
 /// # Security
