@@ -1,24 +1,20 @@
 // Copyright 2025
 //	Steven Dee
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
+// Redistribution and use in source and binary forms, with or without modification, are permitted
+// provided that the following conditions are met:
 //
-// Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
+// Redistributions of source code must retain the above copyright notice, this list of conditions
+// and the following disclaimer.
 //
-// THIS SOFTWARE IS PROVIDED BY STEVEN DEE “AS IS” AND ANY EXPRESS
-// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL STEVEN DEE BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-// IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-// IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// THIS SOFTWARE IS PROVIDED BY STEVEN DEE “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL STEVEN DEE BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+// TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Lightweight, easy-to-use wrapper around the C [`readpassphrase(3)`][0] function.
 //!
@@ -123,7 +119,7 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{error, ffi::CStr, fmt, io, mem, str::Utf8Error};
+use std::{error, ffi::CStr, fmt, io, mem, slice, str::Utf8Error};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -230,7 +226,7 @@ pub fn readpassphrase<'a>(
 /// # }
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
-    let buf = vec![0u8; PASSWORD_LEN];
+    let buf = Vec::with_capacity(PASSWORD_LEN);
     Ok(readpassphrase_owned(prompt, buf, Flags::empty())?)
 }
 
@@ -284,40 +280,53 @@ pub fn readpassphrase_owned(
     })
 }
 
-// Reads a passphrase into `buf`’s maybe-uninitialized capacity and returns it as a `String`
-// reusing `buf`’s memory on success. This function serves to make it possible to write
-// `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
-// behavior by constructing a maybe-uninitialized slice.
+// Reads a passphrase into `buf`’s full capacity and returns it as a `String` reusing `buf`’s
+// memory on success. This function serves to make it possible to write `readpassphrase_owned`
+// without either pre-initializing the buffer or invoking undefined behavior by constructing a
+// potentially uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
+    // If we could construct a `&[u8]` out of potentially uninitialized memory, then this whole
+    // function could just be:
+    // ```
+    // let buf_slice = unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr(), buf.capacity()) };
+    // let res = readpassphrase(prompt, buf_slice, flags)?;
+    // unsafe {
+    //     buf.set_len(res.len());
+    // }
+    // Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
+    // ```
     let prompt = prompt.as_ptr();
-    let buf_ptr = buf.as_mut_ptr().cast();
+    let buf_ptr: *mut mem::MaybeUninit<u8> = buf.as_mut_ptr().cast();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
-    // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
-    // points to an allocation of at least `bufsiz` bytes.
-    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
+    // SAFETY: as in `crate::readpassphrase`.
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
-    debug_assert!(
-        buf.contains(&0)
-            || buf.spare_capacity_mut().iter().any(|b| {
-                // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized
-                // `buf` to a byte sequence ending in a nul byte.
-                unsafe { b.assume_init() == 0 }
-            })
-    );
-    // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized `buf` to a byte
-    // sequence ending ending in a nul byte.
-    let res = unsafe { CStr::from_ptr(buf_ptr) }.to_str()?;
-    assert!(res.len() < bufsiz);
-    // SAFETY: we just checked `res.len()` against capacity and we assume `buf` has been
-    // initialized up through `res.len()`.
+
+    // SAFETY: `buf` will not be mutated from here on.
+    let buf_uninit = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
+    let nul_pos = buf_uninit
+        .iter()
+        .position(|&b| unsafe {
+            // We assume that `readpassphrase(3)` either returns null or initializes `buf`
+            // to a sequence of bytes ending in a zero byte. This assumption is unchecked.
+            b.assume_init() == 0
+        })
+        .unwrap();
+    // SAFETY: just confirmed that `buf` has its first nul byte at `nul_pos < bufsiz`.
+    let res = unsafe {
+        let bytes = slice::from_raw_parts(buf_ptr.cast(), nul_pos + 1);
+        CStr::from_bytes_with_nul_unchecked(bytes)
+    }
+    .to_str()?;
+    // SAFETY: `buf` is initialized up to `res.len() == nul_pos < bufsiz == buf.capacity()`.
     unsafe {
         buf.set_len(res.len());
     }
     let buf = mem::take(buf);
-    // SAFETY: `CStr::to_str` has just confirmed that these bytes are valid UTF-8.
+    // SAFETY: already confirmed via `CStr::to_str`.
     Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
@@ -411,7 +420,7 @@ mod our_zeroize {
 
     impl Zeroize for String {
         fn zeroize(&mut self) {
-            // SAFETY: zero is valid UTF-8.
+            // SAFETY: we clear the string.
             unsafe { self.as_mut_vec() }.zeroize();
         }
     }
@@ -424,7 +433,6 @@ mod our_zeroize {
     }
 
     fn compile_fence<T>(buf: &[T]) {
-        // SAFETY: noop.
         unsafe {
             asm!(
                 "/* {ptr} */",
@@ -439,15 +447,6 @@ mod ffi {
     use std::ffi::{c_char, c_int};
 
     extern "C" {
-        /// Interface to the libc `readpassphrase(3)` function.
-        ///
-        /// The caller may assume that this function either returns null or partially initializes
-        /// `buf` to a sequence of bytes ending in a nul byte.
-        ///
-        /// # Safety
-        /// The caller must ensure that `prompt` refers to a valid nul-terminated UTF-8
-        /// (non-Windows) or ASCII (Windows) byte sequence, and that `buf` refers to an allocation
-        /// of at least `bufsiz` bytes.
         pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
