@@ -202,6 +202,8 @@ pub fn readpassphrase<'a>(
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.len();
     let flags = flags.bits();
+    // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
+    // points to an allocation of size at least `bufsiz` bytes.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
@@ -291,16 +293,31 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
+    // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
+    // points to an allocation of at least `bufsiz` bytes.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
+    debug_assert!(
+        buf.contains(&0)
+            || buf.spare_capacity_mut().iter().any(|b| {
+                // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized
+                // `buf` to a byte sequence ending in a nul byte.
+                unsafe { b.assume_init() == 0 }
+            })
+    );
+    // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized `buf` to a byte
+    // sequence ending ending in a nul byte.
     let res = unsafe { CStr::from_ptr(buf_ptr) }.to_str()?;
     assert!(res.len() < bufsiz);
+    // SAFETY: we just checked `res.len()` against capacity and we assume `buf` has been
+    // initialized up through `res.len()`.
     unsafe {
         buf.set_len(res.len());
     }
     let buf = mem::take(buf);
+    // SAFETY: `CStr::to_str` has just confirmed that these bytes are valid UTF-8.
     Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
@@ -393,6 +410,7 @@ mod our_zeroize {
 
     impl Zeroize for String {
         fn zeroize(&mut self) {
+            // SAFETY: zero is valid UTF-8.
             unsafe { self.as_mut_vec() }.zeroize();
         }
     }
@@ -405,6 +423,7 @@ mod our_zeroize {
     }
 
     fn compile_fence<T>(buf: &[T]) {
+        // SAFETY: noop.
         unsafe {
             asm!(
                 "/* {ptr} */",
@@ -419,6 +438,15 @@ mod ffi {
     use std::ffi::{c_char, c_int};
 
     extern "C" {
+        /// Interface to the libc `readpassphrase(3)` function.
+        ///
+        /// The caller may assume that this function either returns null or partially initializes
+        /// `buf` to a sequence of bytes ending in a nul byte.
+        ///
+        /// # Safety
+        /// The caller must ensure that `prompt` refers to a valid nul-terminated UTF-8
+        /// (non-Windows) or ASCII (Windows) byte sequence, and that `buf` refers to an allocation
+        /// of at least `bufsiz` bytes.
         pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
