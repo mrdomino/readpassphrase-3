@@ -324,15 +324,16 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
         .unwrap(); // `ffi::readpassphrase` contract guarantees null terminator on success
 
     // SAFETY: `buf_ptr` is a single aligned allocation of at least `null_pos + 1`. We already
-    // assumed that `buf` was initialized up through the first nul byte.
-    let bytes = unsafe { slice::from_raw_parts(buf_ptr.cast(), null_pos + 1) };
-    let res = CStr::from_bytes_with_nul(bytes)
-        .unwrap() // guaranteed valid since we just found the null terminator
-        .to_str()?;
-    // SAFETY: `res.len()` is less than or equal to `buf.capacity()` by construction, and we
+    // assumed that `buf` was initialized up through the first nul byte, which is at `null_pos`.
+    let res_str = unsafe {
+        let bytes = slice::from_raw_parts(buf_ptr.cast(), null_pos + 1);
+        CStr::from_bytes_with_nul_unchecked(bytes)
+    }
+    .to_str()?;
+    // SAFETY: `res_str.len()` is less than or equal to `buf.capacity()` by construction, and we
     // assume `buf` was initialized up through the first nul byte.
     unsafe {
-        buf.set_len(res.len());
+        buf.set_len(res_str.len());
     }
     let buf = mem::take(buf);
     // SAFETY: `CStr::to_str` has just confirmed that the bytes are valid UTF-8.
