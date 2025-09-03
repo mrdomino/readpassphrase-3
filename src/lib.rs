@@ -123,7 +123,7 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{error, ffi::CStr, fmt, io, mem, str::Utf8Error};
+use std::{error, ffi::CStr, fmt, io, mem, slice, str::Utf8Error};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -284,40 +284,59 @@ pub fn readpassphrase_owned(
     })
 }
 
-// Reads a passphrase into `buf`’s maybe-uninitialized capacity and returns it as a `String`
-// reusing `buf`’s memory on success. This function serves to make it possible to write
-// `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
-// behavior by constructing a maybe-uninitialized slice.
+// Reads a passphrase into `buf`’s full capacity and returns it as a `String` reusing `buf`’s
+// memory on success. This function serves to make it possible to write `readpassphrase_owned`
+// without either pre-initializing the buffer or invoking undefined behavior by constructing a
+// potentially uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
+    // If we could construct a `&[u8]` out of potentially uninitialized memory, then this whole
+    // function could just be:
+    // ```
+    // let buf_slice = unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr(), buf.capacity()) };
+    // let res = readpassphrase(prompt, buf_slice, flags)?;
+    // unsafe {
+    //     buf.set_len(res.len());
+    // }
+    // Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
+    // ```
+    // We do the following because we cannot.
     let prompt = prompt.as_ptr();
-    let buf_ptr = buf.as_mut_ptr().cast();
+    let buf_ptr = buf.as_mut_ptr().cast::<mem::MaybeUninit<u8>>();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
     // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
     // points to an allocation of at least `bufsiz` bytes.
-    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
-    debug_assert!(
-        buf.contains(&0)
-            || buf.spare_capacity_mut().iter().any(|b| {
-                // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized
-                // `buf` to a byte sequence ending in a nul byte.
-                unsafe { b.assume_init() == 0 }
-            })
-    );
-    // SAFETY: `readpassphrase(3)` did not return null, so it must have initialized `buf` to a byte
-    // sequence ending ending in a nul byte.
-    let res = unsafe { CStr::from_ptr(buf_ptr) }.to_str()?;
-    assert!(res.len() < bufsiz);
-    // SAFETY: we just checked `res.len()` against capacity and we assume `buf` has been
-    // initialized up through `res.len()`.
+    // SAFETY: `buf_ptr` is a single aligned allocation of size `bufsiz`, `MaybeUninit<T>` is
+    // properly initialized, and the data will not be mutated for this slice’s lifetime.
+    let maybe_uninit_slice = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
+    let null_pos = maybe_uninit_slice
+        .iter()
+        .position(|&b| unsafe {
+            // SAFETY: `readpassphrase(3)` must have either returned null or initialized `buf_ptr`
+            // to a byte sequence ending in a nul byte. (NB. this is required of any
+            // `readpassphrase(3)` implementation, and if this ever does not hold, UB may result.)
+            b.assume_init() == 0
+        })
+        .unwrap(); // `ffi::readpassphrase` contract guarantees null terminator on success
+
+    // SAFETY: `buf_ptr` is a single aligned allocation of at least `null_pos + 1`. We already
+    // assumed that `buf` was initialized up through the first nul byte, which is at `null_pos`.
+    let res_str = unsafe {
+        let bytes = slice::from_raw_parts(buf_ptr.cast(), null_pos + 1);
+        CStr::from_bytes_with_nul_unchecked(bytes)
+    }
+    .to_str()?;
+    // SAFETY: `res_str.len()` is less than or equal to `buf.capacity()` by construction, and we
+    // assume `buf` was initialized up through the first nul byte.
     unsafe {
-        buf.set_len(res.len());
+        buf.set_len(res_str.len());
     }
     let buf = mem::take(buf);
-    // SAFETY: `CStr::to_str` has just confirmed that these bytes are valid UTF-8.
+    // SAFETY: `CStr::to_str` has just confirmed that the bytes are valid UTF-8.
     Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
