@@ -284,10 +284,10 @@ pub fn readpassphrase_owned(
     })
 }
 
-// Reads a passphrase into `buf`’s maybe-uninitialized capacity and returns it as a `String`
-// reusing `buf`’s memory on success. This function serves to make it possible to write
-// `readpassphrase_owned` without either pre-initializing the buffer or invoking undefined
-// behavior by constructing a maybe-uninitialized slice.
+// Reads a passphrase into `buf`’s full capacity and returns it as a `String` reusing `buf`’s
+// memory on success. This function serves to make it possible to write `readpassphrase_owned`
+// without either pre-initializing the buffer or invoking undefined behavior by constructing a
+// potentially uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
     // If we could construct a `&[u8]` out of potentially uninitialized memory, then this whole
     // function could just be:
