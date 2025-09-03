@@ -307,7 +307,7 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
 
     // SAFETY: `buf` will not be mutated from here on.
     let buf_uninit = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
-    let null_pos = buf_uninit
+    let nul_pos = buf_uninit
         .iter()
         .position(|&b| unsafe {
             // We assume that `readpassphrase(3)` either returns null or initializes `buf`
@@ -315,13 +315,13 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
             b.assume_init() == 0
         })
         .unwrap();
-    // SAFETY: just confirmed that `buf` has its first nul byte at `null_pos < bufsiz`.
+    // SAFETY: just confirmed that `buf` has its first nul byte at `nul_pos < bufsiz`.
     let res = unsafe {
-        let bytes = slice::from_raw_parts(buf_ptr.cast(), null_pos + 1);
+        let bytes = slice::from_raw_parts(buf_ptr.cast(), nul_pos + 1);
         CStr::from_bytes_with_nul_unchecked(bytes)
     }
     .to_str()?;
-    // SAFETY: `buf` is initialized up to `res.len() == null_pos < bufsiz == buf.capacity()`.
+    // SAFETY: `buf` is initialized up to `res.len() == nul_pos < bufsiz == buf.capacity()`.
     unsafe {
         buf.set_len(res.len());
     }
