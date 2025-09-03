@@ -198,8 +198,8 @@ pub fn readpassphrase<'a>(
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.len();
     let flags = flags.bits();
-    // SAFETY: `prompt` is a nul-terminated byte sequence as constructed by `CStr`, and `buf_ptr`
-    // points to an allocation of size at least `bufsiz` bytes.
+    // SAFETY: `prompt` is a nul-terminated byte sequence, and `buf_ptr` is an allocation of at
+    // least `bufsiz` bytes, as guaranteed by `&CStr` and `&mut [u8]` respectively.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
@@ -326,7 +326,7 @@ fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<
         buf.set_len(res.len());
     }
     let buf = mem::take(buf);
-    // SAFETY: already confirmed via `CStr::to_str`.
+    // SAFETY: confirmed via `CStr::to_str`.
     Ok(unsafe { String::from_utf8_unchecked(buf) })
 }
 
