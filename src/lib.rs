@@ -232,8 +232,10 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 
 /// An [`Error`] from [`readpassphrase_owned`] containing the passed buffer.
 ///
-/// The buffer is accessible via [`OwnedError::take`]. If [`take`](OwnedError::take) is not called,
+/// The buffer is accessible via [`OwnedError::into_bytes`][0]. If [`into_bytes`][0] is not called,
 /// the buffer is automatically zeroed on drop.
+///
+/// [0]: OwnedError::into_bytes
 #[derive(Debug)]
 pub struct OwnedError(Error, Option<Vec<u8>>);
 
