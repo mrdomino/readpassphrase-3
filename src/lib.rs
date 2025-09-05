@@ -119,7 +119,7 @@
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
 
-use std::{error, ffi::CStr, fmt, io, mem, slice, str::Utf8Error};
+use std::{error, ffi::CStr, fmt, io, mem, str};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -167,7 +167,7 @@ pub enum Error {
     /// `readpassphrase(3)` itself encountered an error.
     Io(io::Error),
     /// The entered password was not UTF-8.
-    Utf8(Utf8Error),
+    Utf8(str::Utf8Error),
 }
 
 /// Reads a passphrase using `readpassphrase(3)`, returning a [`&str`](str).
@@ -285,49 +285,36 @@ pub fn readpassphrase_owned(
 // without either pre-initializing the buffer or invoking undefined behavior by constructing a
 // potentially uninitialized slice.
 fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
-    // If we could construct a `&[u8]` out of potentially uninitialized memory, then this whole
-    // function could just be:
-    // ```
-    // let buf_slice = unsafe { slice::from_raw_parts_mut(buf.as_mut_ptr(), buf.capacity()) };
-    // let res = readpassphrase(prompt, buf_slice, flags)?;
-    // unsafe {
-    //     buf.set_len(res.len());
-    // }
-    // Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
-    // ```
+    // We rely on the assumption that `ffi::readpassphrase` either:
+    // 1. Returns a null pointer, or
+    // 2. Partially initializes the passed buffer up to and including a zero (’nul’) byte.
+    //
+    // We make a `*mut u8` from `buf`’s allocation and pass this to `ffi::readpassphrase`. If that
+    // returns non-null, we iterate through `buf` to find the nul byte, then set `buf`’s length so
+    // that it contains all the bytes up to and not including the nul. If this can convert to UTF8,
+    // then we return it.
     let prompt = prompt.as_ptr();
-    let buf_ptr: *mut mem::MaybeUninit<u8> = buf.as_mut_ptr().cast();
+    let buf_ptr: *mut u8 = buf.as_mut_ptr();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
-    // SAFETY: as in `crate::readpassphrase`.
+    // SAFETY: `prompt` from `&Cstr` as above. `buf_ptr` points to an allocation of `bufsiz` bytes.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
     }
 
-    // SAFETY: `buf` will not be mutated from here on.
-    let buf_uninit = unsafe { slice::from_raw_parts(buf_ptr, bufsiz) };
-    let nul_pos = buf_uninit
-        .iter()
-        .position(|&b| unsafe {
-            // We assume that `readpassphrase(3)` either returns null or initializes `buf`
-            // to a sequence of bytes ending in a zero byte. This assumption is unchecked.
-            b.assume_init() == 0
-        })
+    let nul_pos = (0..bufsiz as isize)
+        // SAFETY: `i` stays within `bufsiz`, which is within an allocation;
+        // `ffi::readpassphrase` initialized `buf` up through a zero byte.
+        .position(|i| unsafe { *buf_ptr.offset(i) == 0 })
         .unwrap();
-    // SAFETY: just confirmed that `buf` has its first nul byte at `nul_pos < bufsiz`.
-    let res = unsafe {
-        let bytes = slice::from_raw_parts(buf_ptr.cast(), nul_pos + 1);
-        CStr::from_bytes_with_nul_unchecked(bytes)
-    }
-    .to_str()?;
-    // SAFETY: `buf` is initialized up to `res.len() == nul_pos < bufsiz == buf.capacity()`.
+    // SAFETY: `buf` is initialized at least up to `nul_pos`.
     unsafe {
-        buf.set_len(res.len());
+        buf.set_len(nul_pos);
     }
-    let buf = mem::take(buf);
-    // SAFETY: confirmed via `CStr::to_str`.
-    Ok(unsafe { String::from_utf8_unchecked(buf) })
+    let _ = str::from_utf8(buf)?;
+    // SAFETY: just checked this with str::from_utf8.
+    Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
 }
 
 impl OwnedError {
@@ -357,8 +344,8 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<Utf8Error> for Error {
-    fn from(value: Utf8Error) -> Self {
+impl From<str::Utf8Error> for Error {
+    fn from(value: str::Utf8Error) -> Self {
         Error::Utf8(value)
     }
 }
