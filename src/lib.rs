@@ -441,3 +441,45 @@ mod ffi {
         ) -> *mut c_char;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty() {
+        let err = readpassphrase_owned(c"pass", Vec::new(), Flags::empty()).unwrap_err();
+        let Error::Io(err) = err.into() else {
+            panic!();
+        };
+        assert_eq!(io::ErrorKind::InvalidInput, err.kind());
+
+        let mut buf = Vec::new();
+        let err = readpassphrase(c"pass", &mut buf, Flags::empty()).unwrap_err();
+        let Error::Io(err) = err else {
+            panic!();
+        };
+        assert_eq!(io::ErrorKind::InvalidInput, err.kind());
+    }
+
+    #[test]
+    fn test_zeroize() {
+        let mut buf = "test".to_string();
+        buf.zeroize();
+        unsafe { buf.as_mut_vec().set_len(4) };
+        assert_eq!("\0\0\0\0", &buf);
+        let mut buf = vec![1u8; 15];
+        unsafe { buf.set_len(0) };
+        let x = buf.spare_capacity_mut()[0];
+        assert_eq!(unsafe { x.assume_init() }, 1);
+        buf.zeroize();
+        unsafe { buf.set_len(15) };
+        assert_eq!(vec![0u8; 15], buf);
+        let mut buf = vec![1u8; 2];
+        unsafe { buf.set_len(1) };
+        let slice = &mut *buf;
+        slice.zeroize();
+        unsafe { buf.set_len(2) };
+        assert_eq!(vec![0u8, 1], buf);
+    }
+}
