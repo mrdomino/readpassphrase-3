@@ -274,47 +274,28 @@ pub fn readpassphrase_owned(
     mut buf: Vec<u8>,
     flags: Flags,
 ) -> Result<String, OwnedError> {
-    readpassphrase_mut(prompt, &mut buf, flags).map_err(|e| {
-        buf.clear();
-        OwnedError(e, Some(buf))
-    })
-}
-
-// Reads a passphrase into `buf`’s full capacity and returns it as a `String` reusing `buf`’s
-// memory on success. This function serves to make it possible to write `readpassphrase_owned`
-// without either pre-initializing the buffer or invoking undefined behavior by constructing a
-// potentially uninitialized slice.
-fn readpassphrase_mut(prompt: &CStr, buf: &mut Vec<u8>, flags: Flags) -> Result<String, Error> {
-    // We rely on the assumption that `ffi::readpassphrase` either:
-    // 1. Returns a null pointer, or
-    // 2. Partially initializes the passed buffer up to and including a zero (’nul’) byte.
-    //
-    // We make a `*mut u8` from `buf`’s allocation and pass this to `ffi::readpassphrase`. If that
-    // returns non-null, we iterate through `buf` to find the nul byte, then set `buf`’s length so
-    // that it contains all the bytes up to and not including the nul. If this can convert to UTF8,
-    // then we return it.
     let prompt = prompt.as_ptr();
-    let buf_ptr: *mut u8 = buf.as_mut_ptr();
+    let buf_ptr = buf.as_mut_ptr();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
-    // SAFETY: `prompt` from `&Cstr` as above. `buf_ptr` points to an allocation of `bufsiz` bytes.
+    // SAFETY: `prompt` from `&CStr` as above. `buf_ptr` points to an allocation of `bufsiz` bytes.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
     if res.is_null() {
-        return Err(io::Error::last_os_error().into());
+        buf.clear();
+        return Err(OwnedError(io::Error::last_os_error().into(), Some(buf)));
     }
-
     let nul_pos = (0..bufsiz as isize)
-        // SAFETY: `i` stays within `bufsiz`, which is within an allocation;
-        // `ffi::readpassphrase` initialized `buf` up through a zero byte.
+        // SAFETY: `i` is within `bufsiz`, which is the size of `buf`’s allocation;
+        // `ffi::readpassphrase` initialized `buf` up through a zero byte. We scan `buf` in order;
+        // the zero byte we find is at or before the end of the initialized portion.
         .position(|i| unsafe { *buf_ptr.offset(i) == 0 })
         .unwrap();
     // SAFETY: `buf` is initialized at least up to `nul_pos`.
-    unsafe {
-        buf.set_len(nul_pos);
-    }
-    let _ = str::from_utf8(buf)?;
-    // SAFETY: just checked this with str::from_utf8.
-    Ok(unsafe { String::from_utf8_unchecked(mem::take(buf)) })
+    unsafe { buf.set_len(nul_pos) };
+    String::from_utf8(buf).map_err(|err| {
+        let res = err.utf8_error();
+        OwnedError(res.into(), Some(err.into_bytes()))
+    })
 }
 
 impl OwnedError {
