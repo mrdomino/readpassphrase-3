@@ -299,12 +299,37 @@ pub fn readpassphrase_owned(
 }
 
 impl OwnedError {
-    /// Take `buf` out of the error.
+    /// Return the [`Error`] corresponding to this.
+    pub fn error(&self) -> &Error {
+        &self.0
+    }
+
+    /// Returns the buffer that was passed to [`readpassphrase_owned`].
     ///
     /// # Panics
-    /// Panics if called more than once.
-    pub fn take(&mut self) -> Vec<u8> {
+    /// Panics if [`OwnedError::take`] was called before this.
+    pub fn into_bytes(mut self) -> Vec<u8> {
         self.1.take().unwrap()
+    }
+
+    /// Returns the buffer that was passed to [`readpassphrase_owned`].
+    ///
+    /// If called multiple times, returns [`Vec::new`].
+    #[deprecated(since = "0.10.0", note = "please use `into_bytes` instead")]
+    pub fn take(&mut self) -> Vec<u8> {
+        self.1.take().unwrap_or_default()
+    }
+}
+
+impl error::Error for OwnedError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl fmt::Display for OwnedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -329,18 +354,6 @@ impl From<io::Error> for Error {
 impl From<str::Utf8Error> for Error {
     fn from(value: str::Utf8Error) -> Self {
         Error::Utf8(value)
-    }
-}
-
-impl error::Error for OwnedError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        Some(&self.0)
-    }
-}
-
-impl fmt::Display for OwnedError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 
