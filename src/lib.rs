@@ -301,9 +301,10 @@ pub fn readpassphrase_owned(
 impl OwnedError {
     /// Take `buf` out of the error.
     ///
-    /// Returns empty [`Vec`] after the first call.
+    /// # Panics
+    /// Panics if called more than once.
     pub fn take(&mut self) -> Vec<u8> {
-        self.1.take().unwrap_or_default()
+        self.1.take().unwrap()
     }
 }
 
