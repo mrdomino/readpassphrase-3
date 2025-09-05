@@ -438,15 +438,6 @@ mod ffi {
     use std::ffi::{c_char, c_int};
 
     extern "C" {
-        /// Interface to the libc `readpassphrase(3)` function.
-        ///
-        /// The caller may assume that this function either returns null or partially initializes
-        /// `buf` to a sequence of bytes ending in a nul byte.
-        ///
-        /// # Safety
-        /// The caller must ensure that `prompt` refers to a valid nul-terminated UTF-8
-        /// (non-Windows) or ASCII (Windows) byte sequence, and that `buf` refers to an allocation
-        /// of at least `bufsiz` bytes.
         pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
