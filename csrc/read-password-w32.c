@@ -20,6 +20,10 @@ readpassphrase(const char *prompt, char *buf, size_t len, int flags)
     SIZE_T wbuf_len = 0;
     HANDLE hi, ho = INVALID_HANDLE_VALUE;
 
+    if (len == 0) {
+        goto done;
+    }
+
     /* Set up input console handle */
     DWORD access = GENERIC_READ | GENERIC_WRITE;
     hi = CreateFileA("CONIN$", access, 0, 0, OPEN_EXISTING, 0, 0);

@@ -447,14 +447,24 @@ mod tests {
         let Error::Io(err) = err.into() else {
             panic!();
         };
+        #[cfg(not(windows))]
         assert_eq!(io::ErrorKind::InvalidInput, err.kind());
+        #[cfg(windows)]
+        {
+            _ = err
+        };
 
         let mut buf = Vec::new();
         let err = readpassphrase(c"pass", &mut buf, Flags::empty()).unwrap_err();
         let Error::Io(err) = err else {
             panic!();
         };
+        #[cfg(not(windows))]
         assert_eq!(io::ErrorKind::InvalidInput, err.kind());
+        #[cfg(windows)]
+        {
+            _ = err
+        };
     }
 
     #[test]
