@@ -93,7 +93,7 @@
 //! re-export of the upstream [`zeroize::Zeroize`].
 //!
 //! # “Mismatched types” errors
-//! The prompt strings in this API are references to [CStr], not [str]. This is because the
+//! The prompt strings in this API are references to [CStr], not [prim@str]. This is because the
 //! underlying C function assumes that the prompt is a null-terminated string; were we to take
 //! `&str` instead of `&CStr`, we would need to make a copy of the prompt on every call.
 //!
@@ -170,7 +170,7 @@ pub enum Error {
     Utf8(str::Utf8Error),
 }
 
-/// Reads a passphrase using `readpassphrase(3)`, returning a [`&str`](str).
+/// Reads a passphrase using `readpassphrase(3)`, returning a [`&str`](prim@str).
 ///
 /// This function reads a password of up to `buf.len() - 1` bytes into `buf`. If the entered
 /// password is longer, it is truncated to the maximum length. If `readpassphrase(3)` itself fails,
