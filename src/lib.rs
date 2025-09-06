@@ -277,11 +277,11 @@ pub fn readpassphrase_owned(
     flags: Flags,
 ) -> Result<String, OwnedError> {
     let prompt = prompt.as_ptr();
-    let buf_ptr = buf.as_mut_ptr();
+    let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.capacity();
     let flags = flags.bits();
     // SAFETY: `prompt` from `&CStr` as above. `buf_ptr` points to an allocation of `bufsiz` bytes.
-    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr.cast(), bufsiz, flags) };
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         buf.clear();
         return Err(OwnedError(io::Error::last_os_error().into(), Some(buf)));
