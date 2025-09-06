@@ -93,9 +93,10 @@
 //! re-export of the upstream [`zeroize::Zeroize`].
 //!
 //! # “Mismatched types” errors
-//! The prompt strings in this API are references to [CStr], not [prim@str]. This is because the
-//! underlying C function assumes that the prompt is a null-terminated string; were we to take
-//! `&str` instead of `&CStr`, we would need to make a copy of the prompt on every call.
+//! The prompt strings in this API are <code>&[CStr]</code>, not <code>&[str]</code>.
+//! This is because the underlying C function assumes that the prompt is a null-terminated string;
+//! were we to take `&str` instead of `&CStr`, we would need to make a copy of the prompt on every
+//! call.
 //!
 //! Most of the time, your prompts will be string literals; you can ask Rust to give you a `&CStr`
 //! literal by simply prepending `c` to the string:
@@ -118,6 +119,7 @@
 //! though called with [`Flags::empty()`].
 //!
 //! [0]: https://man.openbsd.org/readpassphrase
+//! [str]: prim@str "str"
 
 use std::{error, ffi::CStr, fmt, io, mem, str};
 
@@ -170,11 +172,14 @@ pub enum Error {
     Utf8(str::Utf8Error),
 }
 
-/// Reads a passphrase using `readpassphrase(3)`, returning a [`&str`](prim@str).
+/// Reads a passphrase using `readpassphrase(3)`.
 ///
-/// This function reads a password of up to `buf.len() - 1` bytes into `buf`. If the entered
-/// password is longer, it is truncated to the maximum length. If `readpassphrase(3)` itself fails,
-/// or if the entered password is not valid UTF-8, then [`Error`] is returned.
+/// This function returns a <code>&[str]</code> backed by `buf`, representing a password of up to
+/// `buf.len() - 1` bytes. Any additional characters and the terminating newline are discarded.
+///
+/// # Errors
+/// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
+/// The former will be represented by [`Error::Io`] and the latter by [`Error::Utf8`].
 ///
 /// # Security
 /// The passed buffer might contain sensitive data, even if this function returns an error.
@@ -189,6 +194,7 @@ pub enum Error {
 /// # Ok(())
 /// # }
 /// ```
+/// [str]: prim@str "str"
 pub fn readpassphrase<'a>(
     prompt: &CStr,
     buf: &'a mut [u8],
@@ -213,6 +219,10 @@ pub fn readpassphrase<'a>(
 /// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) If the entered passphrase
 /// is longer, it will be truncated to the maximum length.
 ///
+/// # Errors
+/// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
+/// The former will be represented by [`Error::Io`] and the latter by [`Error::Utf8`].
+///
 /// # Security
 /// The returned `String` is owned by the caller, and therefore it is the caller’s responsibility
 /// to clear it when you are done with it:
@@ -232,8 +242,10 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 
 /// An [`Error`] from [`readpassphrase_owned`] containing the passed buffer.
 ///
-/// The buffer is accessible via [`OwnedError::into_bytes`][0]. If [`into_bytes`][0] is not called,
-/// the buffer is automatically zeroed on drop.
+/// The buffer is accessible via [`OwnedError::into_bytes`][0], and the `Error` via
+/// [`OwnedError::error`].
+///
+/// If [`into_bytes`][0] is not called, the buffer is automatically zeroed on drop.
 ///
 /// [0]: OwnedError::into_bytes
 #[derive(Debug)]
@@ -244,13 +256,18 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 /// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
 /// is longer, it will be truncated.
 ///
-/// The returned [`String`] reuses `buf`’s memory; no copies are made. On error, the original
-/// buffer is instead returned via [`OwnedError`] and may be reused. `OwnedError` converts to
-/// [`Error`], so the `?` operator may be used with functions that return `Error`.
+/// The returned [`String`] reuses `buf`’s memory; no copies are made.
 ///
 /// **NB**. Sometimes in Rust the capacity of a vector may be larger than you expect; if you need a
 /// precise limit on the length of the entered password, either use [`readpassphrase`] or truncate
 /// the returned string.
+///
+/// # Errors
+/// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
+/// The former will be represented by [`Error::Io`] and the latter by [`Error::Utf8`]. The vector
+/// you moved in is also included.
+///
+/// See the docs for [`OwnedError`] for more details on what you can do with this error.
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
