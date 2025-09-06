@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "0.10.0-rc.0"
+version = "0.10.0-rc.1"
 edition = "2021"
 rust-version = "1.77.0"
 description = "Simple wrapper around readpassphrase(3)"
