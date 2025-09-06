@@ -33,14 +33,14 @@
 //! ```
 //!
 //! If you need to pass [`Flags`] or to control the buffer size, then you can use
-//! [`readpassphrase`] or [`readpassphrase_owned`] depending on your ownership requirements:
+//! [`readpassphrase`] or [`readpassphrase_into`] depending on your ownership requirements:
 //! ```no_run
 //! let mut buf = vec![0u8; 256];
 //! use readpassphrase_3::{Flags, readpassphrase};
 //! let pass: &str = readpassphrase(c"Password: ", &mut buf, Flags::default()).unwrap();
 //!
-//! use readpassphrase_3::readpassphrase_owned;
-//! let pass: String = readpassphrase_owned(c"Pass: ", buf, Flags::FORCELOWER).unwrap();
+//! use readpassphrase_3::readpassphrase_into;
+//! let pass: String = readpassphrase_into(c"Pass: ", buf, Flags::FORCELOWER).unwrap();
 //! # _ = pass;
 //! ```
 //!
@@ -51,11 +51,11 @@
 //!
 //! It is your job to ensure that this is done with the data you own, i.e.
 //! any [`Vec`] passed to [`readpassphrase`] or any [`String`] received from [`getpass`] or
-//! [`readpassphrase_owned`].
+//! [`readpassphrase_into`].
 //!
 //! This crate ships with a minimal [`Zeroize`] trait that may be used for this purpose:
 //! ```no_run
-//! # use readpassphrase_3::{Flags, getpass, readpassphrase, readpassphrase_owned};
+//! # use readpassphrase_3::{Flags, getpass, readpassphrase, readpassphrase_into};
 //! use readpassphrase_3::Zeroize;
 //! let mut pass = getpass(c"password: ").unwrap();
 //! // do_something_with(&pass);
@@ -66,7 +66,7 @@
 //! // match_something_on(res);
 //! buf.zeroize();
 //!
-//! let mut pass = readpassphrase_owned(c"password: ", buf, Flags::empty()).unwrap();
+//! let mut pass = readpassphrase_into(c"password: ", buf, Flags::empty()).unwrap();
 //! // do_something_with(&pass);
 //! pass.zeroize();
 //! ```
@@ -237,19 +237,19 @@ pub fn readpassphrase<'a>(
 /// ```
 pub fn getpass(prompt: &CStr) -> Result<String, Error> {
     let buf = Vec::with_capacity(PASSWORD_LEN);
-    Ok(readpassphrase_owned(prompt, buf, Flags::empty())?)
+    Ok(readpassphrase_into(prompt, buf, Flags::empty())?)
 }
 
-/// An [`Error`] from [`readpassphrase_owned`] containing the passed buffer.
+/// An [`Error`] from [`readpassphrase_into`] containing the passed buffer.
 ///
-/// The buffer is accessible via [`OwnedError::into_bytes`][0], and the `Error` via
-/// [`OwnedError::error`].
+/// The buffer is accessible via [`IntoError::into_bytes`][0], and the `Error` via
+/// [`IntoError::error`].
 ///
 /// If [`into_bytes`][0] is not called, the buffer is automatically zeroed on drop.
 ///
-/// [0]: OwnedError::into_bytes
+/// [0]: IntoError::into_bytes
 #[derive(Debug)]
-pub struct OwnedError(Error, Option<Vec<u8>>);
+pub struct IntoError(Error, Option<Vec<u8>>);
 
 /// Reads a passphrase using `readpassphrase(3)`, returning `buf` as a [`String`].
 ///
@@ -267,7 +267,7 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 /// The former will be represented by [`Error::Io`] and the latter by [`Error::Utf8`]. The vector
 /// you moved in is also included.
 ///
-/// See the docs for [`OwnedError`] for more details on what you can do with this error.
+/// See the docs for [`IntoError`] for more details on what you can do with this error.
 ///
 /// # Security
 /// The returned `String` is owned by the caller, and it is the caller’s responsibility to clear
@@ -277,22 +277,22 @@ pub struct OwnedError(Error, Option<Vec<u8>>);
 /// #     PASSWORD_LEN,
 /// #     Error,
 /// #     Flags,
-/// #     readpassphrase_owned,
+/// #     readpassphrase_into,
 /// # };
 /// # use readpassphrase_3::Zeroize;
 /// # fn main() -> Result<(), Error> {
 /// let buf = vec![0u8; PASSWORD_LEN];
-/// let mut pass = readpassphrase_owned(c"Pass: ", buf, Flags::default())?;
+/// let mut pass = readpassphrase_into(c"Pass: ", buf, Flags::default())?;
 /// _ = pass;
 /// pass.zeroize();
 /// # Ok(())
 /// # }
 /// ```
-pub fn readpassphrase_owned(
+pub fn readpassphrase_into(
     prompt: &CStr,
     mut buf: Vec<u8>,
     flags: Flags,
-) -> Result<String, OwnedError> {
+) -> Result<String, IntoError> {
     let prompt = prompt.as_ptr();
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.capacity();
@@ -301,7 +301,7 @@ pub fn readpassphrase_owned(
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         buf.clear();
-        return Err(OwnedError(io::Error::last_os_error().into(), Some(buf)));
+        return Err(IntoError(io::Error::last_os_error().into(), Some(buf)));
     }
     let nul_pos = (0..bufsiz as isize)
         // SAFETY: `i` is within `bufsiz`, which is the size of `buf`’s allocation;
@@ -313,25 +313,38 @@ pub fn readpassphrase_owned(
     unsafe { buf.set_len(nul_pos) };
     String::from_utf8(buf).map_err(|err| {
         let res = err.utf8_error();
-        OwnedError(res.into(), Some(err.into_bytes()))
+        IntoError(res.into(), Some(err.into_bytes()))
     })
 }
 
-impl OwnedError {
+#[deprecated(since = "0.10.0", note = "please use `IntoError`")]
+pub use IntoError as OwnedError;
+
+/// Deprecated alias for [`readpassphrase_into`].
+#[deprecated(since = "0.10.0", note = "please use `readpassphrase_into`")]
+pub fn readpassphrase_owned(
+    prompt: &CStr,
+    buf: Vec<u8>,
+    flags: Flags,
+) -> Result<String, IntoError> {
+    readpassphrase_into(prompt, buf, flags)
+}
+
+impl IntoError {
     /// Return the [`Error`] corresponding to this.
     pub fn error(&self) -> &Error {
         &self.0
     }
 
-    /// Returns the buffer that was passed to [`readpassphrase_owned`].
+    /// Returns the buffer that was passed to [`readpassphrase_into`].
     ///
     /// # Panics
-    /// Panics if [`OwnedError::take`] was called before this.
+    /// Panics if [`IntoError::take`] was called before this.
     pub fn into_bytes(mut self) -> Vec<u8> {
         self.1.take().unwrap()
     }
 
-    /// Returns the buffer that was passed to [`readpassphrase_owned`].
+    /// Returns the buffer that was passed to [`readpassphrase_into`].
     ///
     /// If called multiple times, returns [`Vec::new`].
     #[deprecated(since = "0.10.0", note = "please use `into_bytes` instead")]
@@ -340,26 +353,26 @@ impl OwnedError {
     }
 }
 
-impl error::Error for OwnedError {
+impl error::Error for IntoError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         Some(&self.0)
     }
 }
 
-impl fmt::Display for OwnedError {
+impl fmt::Display for IntoError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Drop for OwnedError {
+impl Drop for IntoError {
     fn drop(&mut self) {
         self.1.take().as_mut().map(Zeroize::zeroize);
     }
 }
 
-impl From<OwnedError> for Error {
-    fn from(mut value: OwnedError) -> Self {
+impl From<IntoError> for Error {
+    fn from(mut value: IntoError) -> Self {
         mem::replace(&mut value.0, Error::Io(io::ErrorKind::Other.into()))
     }
 }
@@ -462,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_empty() {
-        let err = readpassphrase_owned(c"pass", Vec::new(), Flags::empty()).unwrap_err();
+        let err = readpassphrase_into(c"pass", Vec::new(), Flags::empty()).unwrap_err();
         let Error::Io(err) = err.into() else {
             panic!();
         };

@@ -6,7 +6,7 @@
 // The readpassphrase source and header are copyright 2000-2002, 2007, 2010
 // Todd C. Miller.
 
-use readpassphrase_3::{readpassphrase, readpassphrase_owned, Error, Flags, PASSWORD_LEN};
+use readpassphrase_3::{readpassphrase, readpassphrase_into, Error, Flags, PASSWORD_LEN};
 use zeroize::{Zeroize, Zeroizing};
 
 fn main() -> Result<(), Error> {
@@ -17,7 +17,7 @@ fn main() -> Result<(), Error> {
     let mut buf = buf.take();
     loop {
         let mut res =
-            readpassphrase_owned(c"Confirmation: ", buf.take().unwrap(), Flags::REQUIRE_TTY)?;
+            readpassphrase_into(c"Confirmation: ", buf.take().unwrap(), Flags::REQUIRE_TTY)?;
         if *pass == res {
             res.zeroize();
             break;
