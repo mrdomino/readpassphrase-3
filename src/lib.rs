@@ -247,6 +247,9 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 ///
 /// If [`into_bytes`][0] is not called, the buffer is automatically zeroed on drop.
 ///
+/// This struct is also exported as [`OwnedError`]. That name is deprecated; please transition to
+/// using `IntoError` instead.
+///
 /// [0]: IntoError::into_bytes
 #[derive(Debug)]
 pub struct IntoError(Error, Option<Vec<u8>>);
