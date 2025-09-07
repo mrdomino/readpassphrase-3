@@ -243,9 +243,6 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 ///
 /// If [`into_bytes`][0] is not called, the buffer is automatically zeroed on drop.
 ///
-/// This struct is also exported as [`OwnedError`]. That name is deprecated; please transition to
-/// using `IntoError` instead.
-///
 /// [0]: IntoError::into_bytes
 #[derive(Debug)]
 pub struct IntoError(Error, Option<Vec<u8>>);
@@ -316,19 +313,6 @@ pub fn readpassphrase_into(
     })
 }
 
-#[deprecated(since = "0.10.0", note = "please use `IntoError`")]
-pub use IntoError as OwnedError;
-
-/// Deprecated alias for [`readpassphrase_into`].
-#[deprecated(since = "0.10.0", note = "please use `readpassphrase_into`")]
-pub fn readpassphrase_owned(
-    prompt: &CStr,
-    buf: Vec<u8>,
-    flags: Flags,
-) -> Result<String, IntoError> {
-    readpassphrase_into(prompt, buf, flags)
-}
-
 impl IntoError {
     /// Return the [`Error`] corresponding to this.
     pub fn error(&self) -> &Error {
@@ -336,19 +320,8 @@ impl IntoError {
     }
 
     /// Returns the buffer that was passed to [`readpassphrase_into`].
-    ///
-    /// # Panics
-    /// Panics if [`IntoError::take`] was called before this.
     pub fn into_bytes(mut self) -> Vec<u8> {
         self.1.take().unwrap()
-    }
-
-    /// Returns the buffer that was passed to [`readpassphrase_into`].
-    ///
-    /// If called multiple times, returns [`Vec::new`].
-    #[deprecated(since = "0.10.0", note = "please use `into_bytes` instead")]
-    pub fn take(&mut self) -> Vec<u8> {
-        self.1.take().unwrap_or_default()
     }
 }
 
