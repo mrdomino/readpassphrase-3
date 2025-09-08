@@ -339,7 +339,9 @@ impl fmt::Display for IntoError {
 
 impl Drop for IntoError {
     fn drop(&mut self) {
-        self.1.take().as_mut().map(Zeroize::zeroize);
+        if let Some(mut buf) = self.1.take() {
+            buf.zeroize();
+        }
     }
 }
 
