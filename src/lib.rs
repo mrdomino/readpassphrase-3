@@ -148,7 +148,7 @@ bitflags! {
     /// passed `ECHO_OFF`, i.e., the flags are ignored.
     ///
     /// [0]: https://docs.rs/bitflags/latest/bitflags/#zero-bit-flags
-    #[derive(Default)]
+    #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
     pub struct Flags: i32 {
         /// Leave echo on.
         const ECHO_ON     = 0x01;
