@@ -42,7 +42,7 @@ jobs:
           path: target/debug/examples/pass${{ env.suffix }}
       - run: cargo test
       - run: cargo test --features=zeroize
-      - run: cargo test --features=libbsd-static --no-default-features
+      - run: cargo test --features=libbsd-static --features=windows-vendored --no-default-features
         if: ${{ matrix.os != 'ubuntu' || matrix.libbsd }}
 
   lint:
