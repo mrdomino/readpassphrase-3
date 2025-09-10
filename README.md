@@ -16,7 +16,8 @@ cargo add readpassphrase-3 -F zeroize
 See <https://docs.rs/readpassphrase-3> for documentation and examples.
 
 # Crate Features
-- `vendored`, enabled by default, compiles and uses a vendored version of the `readpassphrase` C function on platforms that need it. On Windows, this comes from bundled public domain code; on non-Windows, this comes from a first-party [`tcm-readpassphrase-vendored`][5] crate, shipped separately so as to not subject this crate to the ISC license.
+- `linux-vendored`, enabled by default, uses (on non-Windows and non-macOS) the bundled BSD readpassphrase source from the first-party [`tcm-readpassphrase-vendored`][5] crate, shipped separately so as to not subject this crate to the (permissive) ISC license.
+- `windows-vendored`, also enabled by default, uses (on Windows only) a bundled readpassphrase implementation from the public domain.
 - `libbsd-static` uses `readpassphrase` from the `libbsd` system library statically, i.e. without incurring a runtime dependency.
 - `zeroize` uses [`zeroize`][3] to zero memory internally (otherwise a minimal in-crate version is used.)
 

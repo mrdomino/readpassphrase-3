@@ -30,12 +30,10 @@ name = "owned"
 path = "examples/owned.rs"
 
 [features]
-default = ["vendored"]
+default = ["linux-vendored", "windows-vendored"]
 libbsd-static = []
-vendored = [
-    "dep:cc",
-    "dep:tcm-readpassphrase-vendored",
-]
+linux-vendored = ["dep:tcm-readpassphrase-vendored"]
+windows-vendored = ["dep:cc"]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
