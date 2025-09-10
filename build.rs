@@ -30,7 +30,7 @@ fn main() {
             return;
         }
     }
-    #[cfg(all(target_os = "windows", feature = "vendored"))]
+    #[cfg(all(target_os = "windows", feature = "windows-vendored"))]
     {
         cc::Build::new()
             .file("csrc/read-password-w32.c")
