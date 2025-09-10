@@ -1,11 +1,3 @@
-// Copyright 2025 Steven Dee.
-//
-// This project is made available under a BSD-compatible license. See the
-// LICENSE file in the project root for details.
-//
-// The readpassphrase source and header are copyright 2000-2002, 2007, 2010
-// Todd C. Miller.
-
 use std::process::exit;
 
 use readpassphrase_3::{readpassphrase, Flags as RpFlags, PASSWORD_LEN};
