@@ -255,10 +255,20 @@ pub struct IntoError(Error, Option<Vec<u8>>);
 
 /// Reads a passphrase using `readpassphrase(3)`, returning `buf` as a [`String`].
 ///
-/// The returned [`String`] reuses `buf`’s memory; no copies are made.
+/// The returned [`String`] reuses `buf`’s memory; no copies are made, and `buf` is never
+/// reallocated.
 ///
-/// This function will use `buf`’s full allocation (up to [`MAX_CAPACITY`]) or its full initialized
-/// portion, whichever is larger.
+/// `buf`’s full allocation will be  used, whether initialized or not, up to [4KiB][MAX_CAPACITY];
+/// i.e., the following two statements are equivalent:
+/// ```no_run
+/// # use readpassphrase_3::{Flags, readpassphrase_into};
+/// # let flags = Flags::empty();
+/// let _ = readpassphrase_into(c"> ", vec![0u8; 128], flags);
+/// let _ = readpassphrase_into(c"> ", Vec::with_capacity(128), flags);
+/// ```
+///
+/// If for some reason you must use this function to read more than 4KiB of text, then you should
+/// initialize the buffer to the length you will need.
 ///
 /// # Errors
 /// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
