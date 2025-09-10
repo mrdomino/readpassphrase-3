@@ -31,15 +31,21 @@ path = "examples/owned.rs"
 
 [features]
 default = ["vendored"]
-libbsd = []
-vendored = ["dep:cc"]
+libbsd-static = []
+vendored = [
+    "dep:cc",
+    "dep:tcm-readpassphrase-vendored",
+]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
 bitflags = "2"
 zeroize = { version = "1", optional = true }
 
-[build-dependencies]
+[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
+tcm-readpassphrase-vendored = { version = "0.2", optional = true }
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
 cc = { version = "1", optional = true }
 
 [dev-dependencies]

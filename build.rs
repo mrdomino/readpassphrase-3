@@ -8,7 +8,7 @@
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    #[cfg(feature = "libbsd")]
+    #[cfg(feature = "libbsd-static")]
     {
         // Rerun if any environment variable affecting pkg-config changes
         println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
@@ -21,28 +21,20 @@ fn main() {
         println!("cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR");
 
         if std::process::Command::new("pkg-config")
-            .args(["--exists", "libbsd"])
+            .args(["--atleast-version", "0.9", "--exists", "libbsd"])
             .status()
             .map(|s| s.success())
             .unwrap_or(false)
         {
             println!("cargo:rustc-link-lib=static:-bundle=bsd");
+            return;
         }
     }
-    #[cfg(all(not(feature = "libbsd"), feature = "vendored"))]
+    #[cfg(all(target_os = "windows", feature = "vendored"))]
     {
-        if std::env::var_os("CARGO_CFG_WINDOWS").is_some() {
-            cc::Build::new()
-                .file("csrc/read-password-w32.c")
-                .compile("read-password-w32");
-            println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
-        } else {
-            cc::Build::new()
-                .file("csrc/readpassphrase.c")
-                .include("csrc")
-                .compile("readpassphrase");
-            println!("cargo:rerun-if-changed=csrc/readpassphrase.c");
-            println!("cargo:rerun-if-changed=csrc/readpassphrase.h");
-        }
+        cc::Build::new()
+            .file("csrc/read-password-w32.c")
+            .compile("read-password-w32");
+        println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
     }
 }
