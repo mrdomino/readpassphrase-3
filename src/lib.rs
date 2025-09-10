@@ -202,6 +202,8 @@ pub fn readpassphrase<'a>(
     buf: &'a mut [u8],
     flags: Flags,
 ) -> Result<&'a str, Error> {
+    #[cfg(debug_assertions)]
+    buf.fill(1); // Prefill `buf` with nonzero bytes to check that `ffi::readpassphrase` sets it.
     let prompt = prompt.as_ptr();
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.len();
