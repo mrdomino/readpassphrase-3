@@ -343,6 +343,19 @@ impl IntoError {
     }
 
     /// Returns the buffer that was passed to [`readpassphrase_into`].
+    ///
+    /// # Security
+    /// The returned buffer may contain sensitive data in its spare capacity, even if the
+    /// buffer’s length is zero. It is the caller’s responsibility to zero it as soon as possible
+    /// if needed, e.g. using [`Zeroize`]:
+    /// ```no_run
+    /// # use std::io::*;
+    /// # use readpassphrase_3::{Flags, Zeroize, readpassphrase_into};
+    /// # let err = readpassphrase_into(c"", vec![], Flags::empty()).unwrap_err();
+    /// let mut buf = err.into_bytes();
+    /// // ...
+    /// buf.zeroize();
+    /// ```
     pub fn into_bytes(mut self) -> Vec<u8> {
         self.1.take().unwrap()
     }
