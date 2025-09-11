@@ -278,7 +278,8 @@ pub struct IntoError(Error, Option<Vec<u8>>);
 /// # Errors
 /// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
 /// The former will be represented by [`Error::Io`] and the latter by [`Error::Utf8`]. The vector
-/// you moved in is also included.
+/// you moved in is also included, and in the case of [`Error::Utf8`], contains the non-UTF8 byte
+/// sequence produced by `readpassphrase(3)`.
 ///
 /// See the docs for [`IntoError`] for more details on what you can do with this error.
 ///
@@ -307,17 +308,30 @@ pub fn readpassphrase_into(
     flags: Flags,
 ) -> Result<String, IntoError> {
     let bufsiz = cmp::max(buf.len(), cmp::min(buf.capacity(), MAX_CAPACITY));
-    buf.resize(bufsiz, 0);
-    let res = readpassphrase(prompt, &mut buf, flags).map(str::len);
-    match res {
+    if cfg!(debug_assertions) {
+        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a nul.
+        buf.fill(1);
+        buf.resize(bufsiz, 1);
+    } else {
+        buf.resize(bufsiz, 0);
+    }
+    let prompt = prompt.as_ptr();
+    let buf_ptr = buf.as_mut_ptr().cast();
+    let flags = flags.bits();
+    // SAFETY: By construction as with `readpassphrase` above.
+    let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
+    if res.is_null() {
+        buf.clear();
+        return Err(IntoError(io::Error::last_os_error().into(), Some(buf)));
+    }
+    let len = buf.iter().position(|&b| b == 0).unwrap();
+    buf.truncate(len);
+    match String::from_utf8(buf) {
+        Ok(s) => Ok(s),
         Err(e) => {
-            buf.clear();
-            Err(IntoError(e, Some(buf)))
-        }
-        Ok(len) => {
-            buf.truncate(len);
-            // SAFETY: `readpassphrase` returned `buf` as a `&str` that is valid UTF-8 up to `len`.
-            Ok(unsafe { String::from_utf8_unchecked(buf) })
+            let err = e.utf8_error();
+            let buf = e.into_bytes();
+            Err(IntoError(Error::Utf8(err), Some(buf)))
         }
     }
 }
