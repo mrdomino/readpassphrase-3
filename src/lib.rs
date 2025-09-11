@@ -458,9 +458,7 @@ mod our_zeroize {
     not(target_os = "macos"),
     not(target_os = "windows")
 ))]
-mod ffi {
-    pub(crate) use tcm_readpassphrase_vendored::readpassphrase;
-}
+pub(crate) use tcm_readpassphrase_vendored as ffi;
 #[cfg(any(
     not(feature = "linux-vendored"),
     target_os = "macos",
