@@ -453,17 +453,9 @@ mod our_zeroize {
     }
 }
 
-#[cfg(all(
-    feature = "linux-vendored",
-    not(target_os = "macos"),
-    not(target_os = "windows")
-))]
+#[cfg(use_tcm)]
 pub(crate) use tcm_readpassphrase_vendored as ffi;
-#[cfg(any(
-    not(feature = "linux-vendored"),
-    target_os = "macos",
-    target_os = "windows"
-))]
+#[cfg(not(use_tcm))]
 mod ffi {
     use std::ffi::{c_char, c_int};
 

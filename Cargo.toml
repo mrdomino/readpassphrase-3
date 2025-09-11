@@ -31,6 +31,7 @@ path = "examples/owned.rs"
 
 [features]
 default = ["linux-vendored", "windows-vendored"]
+external = []
 libbsd-static = []
 linux-vendored = ["dep:tcm-readpassphrase-vendored"]
 windows-vendored = ["dep:cc"]

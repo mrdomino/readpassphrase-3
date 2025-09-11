@@ -18,6 +18,7 @@ See <https://docs.rs/readpassphrase-3> for documentation and examples.
 # Crate Features
 - `linux-vendored`, enabled by default, uses (on non-Windows and non-macOS) the bundled BSD readpassphrase source from the first-party [`tcm-readpassphrase-vendored`][5] crate, shipped separately so as to not subject this crate to the (permissive) ISC license.
 - `windows-vendored`, also enabled by default, uses (on Windows only) a bundled readpassphrase implementation from the public domain.
+- `external` tells Rust to expect a `readpassphrase` implementation to be provided externally (e.g. by an external build system like Bazel); this crate will not complain if it does not find one in the build script.
 - `libbsd-static` uses `readpassphrase` from the `libbsd` system library statically, i.e. without incurring a runtime dependency.
 - `zeroize` uses [`zeroize`][3] to zero memory internally (otherwise a minimal in-crate version is used.)
 
