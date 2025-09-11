@@ -51,6 +51,6 @@ cc = { version = "1", optional = true }
 zeroize = "1"
 
 [package.metadata.docs.rs]
-features = ["zeroize"]
+features = ["external", "zeroize"]
 # XXX cc is crashing on mac and windows on docs.rs
 no-default-features = true
