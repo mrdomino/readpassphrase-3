@@ -1,17 +1,3 @@
-// Copyright 2025
-//	Steven Dee
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED “AS IS” AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-// REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-// FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT,
-// OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
-// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
-// ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 //! Lightweight, easy-to-use wrapper around the C [`readpassphrase(3)`][0] function.
 //!
 //! From the man page:
@@ -117,7 +103,7 @@
 //! [0]: https://man.openbsd.org/readpassphrase
 //! [str]: prim@str "str"
 
-use std::{error, ffi::CStr, fmt, io, mem, str};
+use std::{cmp, error, ffi::CStr, fmt, io, mem, str};
 
 use bitflags::bitflags;
 #[cfg(any(docsrs, not(feature = "zeroize")))]
@@ -131,6 +117,12 @@ pub use zeroize::Zeroize;
 /// [`getpass`] is 255.
 pub const PASSWORD_LEN: usize = 256;
 
+/// Maximum capacity to use with `readpassphrase_into`.
+///
+/// Vectors with allocations larger than this will only have their capacity used up to this limit.
+/// (The initialized portion of the input vector is always used regardless of size.)
+pub const MAX_CAPACITY: usize = 1 << 12;
+
 bitflags! {
     /// Flags for controlling readpassphrase.
     ///
@@ -142,7 +134,7 @@ bitflags! {
     /// passed `ECHO_OFF`, i.e., the flags are ignored.
     ///
     /// [0]: https://docs.rs/bitflags/latest/bitflags/#zero-bit-flags
-    #[derive(Default)]
+    #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
     pub struct Flags: i32 {
         /// Leave echo on.
         const ECHO_ON     = 0x01;
@@ -196,12 +188,17 @@ pub fn readpassphrase<'a>(
     buf: &'a mut [u8],
     flags: Flags,
 ) -> Result<&'a str, Error> {
+    #[cfg(debug_assertions)]
+    {
+        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a nul.
+        buf.fill(1);
+    }
     let prompt = prompt.as_ptr();
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.len();
     let flags = flags.bits();
     // SAFETY: `prompt` is a nul-terminated byte sequence, and `buf_ptr` is an allocation of at
-    // least `bufsiz` bytes, as guaranteed by `&CStr` and `&mut [u8]` respectively.
+    // least `bufsiz` bytes, by construction from `&CStr` and `&mut [u8]` respectively.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         return Err(io::Error::last_os_error().into());
@@ -243,28 +240,32 @@ pub fn getpass(prompt: &CStr) -> Result<String, Error> {
 ///
 /// If [`into_bytes`][0] is not called, the buffer is automatically zeroed on drop.
 ///
-/// This struct is also exported as [`OwnedError`]. That name is deprecated; please transition to
-/// using `IntoError` instead.
-///
 /// [0]: IntoError::into_bytes
 #[derive(Debug)]
 pub struct IntoError(Error, Option<Vec<u8>>);
 
 /// Reads a passphrase using `readpassphrase(3)`, returning `buf` as a [`String`].
 ///
-/// This function reads a passphrase of up to `buf.capacity() - 1` bytes. If the entered passphrase
-/// is longer, it will be truncated.
+/// The returned [`String`] reuses `buf`’s memory; no copies are made, and `buf` is never
+/// reallocated.
 ///
-/// The returned [`String`] reuses `buf`’s memory; no copies are made.
+/// `buf`’s full allocation will be  used, whether initialized or not, up to [4KiB][MAX_CAPACITY];
+/// i.e., the following two statements are equivalent:
+/// ```no_run
+/// # use readpassphrase_3::{Flags, readpassphrase_into};
+/// # let flags = Flags::empty();
+/// let _ = readpassphrase_into(c"> ", vec![0u8; 128], flags);
+/// let _ = readpassphrase_into(c"> ", Vec::with_capacity(128), flags);
+/// ```
 ///
-/// **NB**. Sometimes in Rust the capacity of a vector may be larger than you expect; if you need a
-/// precise limit on the length of the entered password, either use [`readpassphrase`] or truncate
-/// the returned string.
+/// If for some reason you must use this function to read more than 4KiB of text, then you should
+/// initialize the buffer to the length you will need.
 ///
 /// # Errors
 /// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
 /// The former will be represented by [`Error::Io`] and the latter by [`Error::Utf8`]. The vector
-/// you moved in is also included.
+/// you moved in is also included, and in the case of [`Error::Utf8`], contains the non-UTF8 byte
+/// sequence produced by `readpassphrase(3)`.
 ///
 /// See the docs for [`IntoError`] for more details on what you can do with this error.
 ///
@@ -292,41 +293,33 @@ pub fn readpassphrase_into(
     mut buf: Vec<u8>,
     flags: Flags,
 ) -> Result<String, IntoError> {
+    let bufsiz = cmp::max(buf.len(), cmp::min(buf.capacity(), MAX_CAPACITY));
+    if cfg!(debug_assertions) {
+        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a nul.
+        buf.fill(1);
+        buf.resize(bufsiz, 1);
+    } else {
+        buf.resize(bufsiz, 0);
+    }
     let prompt = prompt.as_ptr();
     let buf_ptr = buf.as_mut_ptr().cast();
-    let bufsiz = buf.capacity();
     let flags = flags.bits();
-    // SAFETY: `prompt` from `&CStr` as above. `buf_ptr` points to an allocation of `bufsiz` bytes.
+    // SAFETY: By construction as with `readpassphrase` above.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
         buf.clear();
         return Err(IntoError(io::Error::last_os_error().into(), Some(buf)));
     }
-    let nul_pos = (0..bufsiz as isize)
-        // SAFETY: `i` is within `bufsiz`, which is the size of `buf`’s allocation;
-        // `ffi::readpassphrase` initialized `buf` up through a zero byte. We scan `buf` in order;
-        // the zero byte we find is at or before the end of the initialized portion.
-        .position(|i| unsafe { *buf_ptr.offset(i) == 0 })
-        .unwrap();
-    // SAFETY: `buf` is initialized at least up to `nul_pos`.
-    unsafe { buf.set_len(nul_pos) };
-    String::from_utf8(buf).map_err(|err| {
-        let res = err.utf8_error();
-        IntoError(res.into(), Some(err.into_bytes()))
-    })
-}
-
-#[deprecated(since = "0.10.0", note = "please use `IntoError`")]
-pub use IntoError as OwnedError;
-
-/// Deprecated alias for [`readpassphrase_into`].
-#[deprecated(since = "0.10.0", note = "please use `readpassphrase_into`")]
-pub fn readpassphrase_owned(
-    prompt: &CStr,
-    buf: Vec<u8>,
-    flags: Flags,
-) -> Result<String, IntoError> {
-    readpassphrase_into(prompt, buf, flags)
+    let len = buf.iter().position(|&b| b == 0).unwrap();
+    buf.truncate(len);
+    match String::from_utf8(buf) {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            let err = e.utf8_error();
+            let buf = e.into_bytes();
+            Err(IntoError(Error::Utf8(err), Some(buf)))
+        }
+    }
 }
 
 impl IntoError {
@@ -337,18 +330,20 @@ impl IntoError {
 
     /// Returns the buffer that was passed to [`readpassphrase_into`].
     ///
-    /// # Panics
-    /// Panics if [`IntoError::take`] was called before this.
+    /// # Security
+    /// The returned buffer may contain sensitive data in its spare capacity, even if the
+    /// buffer’s length is zero. It is the caller’s responsibility to zero it as soon as possible
+    /// if needed, e.g. using [`Zeroize`]:
+    /// ```no_run
+    /// # use std::io::*;
+    /// # use readpassphrase_3::{Flags, Zeroize, readpassphrase_into};
+    /// # let err = readpassphrase_into(c"", vec![], Flags::empty()).unwrap_err();
+    /// let mut buf = err.into_bytes();
+    /// // ...
+    /// buf.zeroize();
+    /// ```
     pub fn into_bytes(mut self) -> Vec<u8> {
         self.1.take().unwrap()
-    }
-
-    /// Returns the buffer that was passed to [`readpassphrase_into`].
-    ///
-    /// If called multiple times, returns [`Vec::new`].
-    #[deprecated(since = "0.10.0", note = "please use `into_bytes` instead")]
-    pub fn take(&mut self) -> Vec<u8> {
-        self.1.take().unwrap_or_default()
     }
 }
 
@@ -366,7 +361,9 @@ impl fmt::Display for IntoError {
 
 impl Drop for IntoError {
     fn drop(&mut self) {
-        self.1.take().as_mut().map(Zeroize::zeroize);
+        if let Some(mut buf) = self.1.take() {
+            buf.zeroize();
+        }
     }
 }
 
@@ -455,6 +452,9 @@ mod our_zeroize {
     }
 }
 
+#[cfg(use_tcm)]
+pub(crate) use tcm_readpassphrase_vendored as ffi;
+#[cfg(not(use_tcm))]
 mod ffi {
     use std::ffi::{c_char, c_int};
 

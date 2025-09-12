@@ -1,12 +1,12 @@
 [package]
 name = "readpassphrase-3"
-version = "0.10.0"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.77.0"
 description = "Simple wrapper around readpassphrase(3)"
 readme = "README.md"
 repository = "https://github.com/mrdomino/readpassphrase-3"
-license = "ISC"
+license = "MIT OR Apache-2.0 OR ISC"
 keywords = ["getpass", "passphrase", "password", "tty"]
 categories = ["command-line-interface"]
 
@@ -30,22 +30,27 @@ name = "owned"
 path = "examples/owned.rs"
 
 [features]
-default = ["vendored"]
-libbsd = []
-vendored = ["dep:cc"]
+default = ["linux-vendored", "windows-vendored"]
+external = []
+libbsd-static = []
+linux-vendored = ["dep:tcm-readpassphrase-vendored"]
+windows-vendored = ["dep:cc"]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
 bitflags = "2"
 zeroize = { version = "1", optional = true }
 
-[build-dependencies]
+[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
+tcm-readpassphrase-vendored = { version = "0.2", optional = true }
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
 cc = { version = "1", optional = true }
 
 [dev-dependencies]
 zeroize = "1"
 
 [package.metadata.docs.rs]
-features = ["zeroize"]
+features = ["external", "zeroize"]
 # XXX cc is crashing on mac and windows on docs.rs
 no-default-features = true

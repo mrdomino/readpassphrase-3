@@ -10,11 +10,14 @@ jobs:
     name: cargo build
     strategy:
       matrix:
-        os: [ubuntu, macos, windows]
-        toolchain: ["nightly"]
+        os: [macos, windows]
+        toolchain: [nightly]
         include:
           - os: ubuntu
             toolchain: 1.77.0
+          - os: ubuntu
+            toolchain: nightly
+            libbsd: true
     runs-on: ${{ matrix.os }}-latest
     steps:
       - name: setup environment
@@ -25,6 +28,9 @@ jobs:
           else
             echo suffix=
           fi >> $GITHUB_ENV
+      - name: install libbsd
+        if: ${{ matrix.libbsd }}
+        run: sudo sh -c 'apt-get update && apt-get -y install libbsd-dev'
       - uses: actions/checkout@v5
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -34,13 +40,10 @@ jobs:
         with:
           name: pass-${{ matrix.os }}-${{ matrix.toolchain }}
           path: target/debug/examples/pass${{ env.suffix }}
-      - run: cargo build --all-targets --features=zeroize
-      - uses: actions/upload-artifact@v4
-        with:
-          name: pass-${{ matrix.os }}-zeroize-${{ matrix.toolchain }}
-          path: target/debug/examples/pass${{ env.suffix }}
-      - run: cargo test
-      - run: cargo test --features=zeroize
+      - run: cargo test --all-targets
+      - run: cargo test --all-targets --features=zeroize
+      - run: cargo test --all-targets --features=libbsd-static --features=windows-vendored --no-default-features
+        if: ${{ matrix.os != 'ubuntu' || matrix.libbsd }}
 
   lint:
     name: cargo fmt && cargo clippy
