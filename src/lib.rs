@@ -76,7 +76,7 @@
 //!
 //! # “Mismatched types” errors
 //! The prompt strings in this API are <code>&[CStr]</code>, not <code>&[str]</code>.
-//! This is because the underlying C function assumes that the prompt is a null-terminated string;
+//! This is because the underlying C function assumes that the prompt is a NUL-terminated string;
 //! were we to take `&str` instead of `&CStr`, we would need to make a copy of the prompt on every
 //! call.
 //!
@@ -113,7 +113,7 @@ pub use zeroize::Zeroize;
 
 /// Size of buffer used in [`getpass`].
 ///
-/// Because `readpassphrase(3)` null-terminates its string, the actual maximum password length for
+/// Because `readpassphrase(3)` NUL-terminates its string, the actual maximum password length for
 /// [`getpass`] is 255.
 pub const PASSWORD_LEN: usize = 256;
 
@@ -190,14 +190,14 @@ pub fn readpassphrase<'a>(
 ) -> Result<&'a str, Error> {
     #[cfg(debug_assertions)]
     {
-        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a nul.
+        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a NUL.
         buf.fill(1);
     }
     let prompt = prompt.as_ptr();
     let buf_ptr = buf.as_mut_ptr().cast();
     let bufsiz = buf.len();
     let flags = flags.bits();
-    // SAFETY: `prompt` is a nul-terminated byte sequence, and `buf_ptr` is an allocation of at
+    // SAFETY: `prompt` is a NUL-terminated byte sequence, and `buf_ptr` is an allocation of at
     // least `bufsiz` bytes, by construction from `&CStr` and `&mut [u8]` respectively.
     let res = unsafe { ffi::readpassphrase(prompt, buf_ptr, bufsiz, flags) };
     if res.is_null() {
@@ -209,7 +209,7 @@ pub fn readpassphrase<'a>(
 /// Reads a passphrase using `readpassphrase(3)`, returning a [`String`].
 ///
 /// Internally, this function uses a buffer of [`PASSWORD_LEN`] bytes, allowing for passwords up to
-/// `PASSWORD_LEN - 1` characters (accounting for the C null terminator.) If the entered passphrase
+/// `PASSWORD_LEN - 1` characters (accounting for the C NUL terminator.) If the entered passphrase
 /// is longer, it will be truncated to the maximum length.
 ///
 /// # Errors
@@ -295,7 +295,7 @@ pub fn readpassphrase_into(
 ) -> Result<String, IntoError> {
     let bufsiz = cmp::max(buf.len(), cmp::min(buf.capacity(), MAX_CAPACITY));
     if cfg!(debug_assertions) {
-        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a nul.
+        // Fill `buf` with nonzero bytes to check that `ffi::readpassphrase` wrote a NUL.
         buf.fill(1);
         buf.resize(bufsiz, 1);
     } else {
