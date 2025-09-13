@@ -312,14 +312,11 @@ pub fn readpassphrase_into(
     }
     let len = buf.iter().position(|&b| b == 0).unwrap();
     buf.truncate(len);
-    match String::from_utf8(buf) {
-        Ok(s) => Ok(s),
-        Err(e) => {
-            let err = e.utf8_error();
-            let buf = e.into_bytes();
-            Err(IntoError(Error::Utf8(err), Some(buf)))
-        }
-    }
+    String::from_utf8(buf).map_err(|e| {
+        let err = e.utf8_error();
+        let buf = e.into_bytes();
+        IntoError(Error::Utf8(err), Some(buf))
+    })
 }
 
 impl IntoError {
