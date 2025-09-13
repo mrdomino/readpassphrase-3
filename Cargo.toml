@@ -2,6 +2,7 @@
 name = "readpassphrase-3"
 version = "1.0.1"
 categories = ["command-line-interface"]
+documentation = "https://docs.rs/readpassphrase-3"
 edition = "2021"
 keywords = ["read", "password", "getpass", "passphrase", "tty"]
 license = "MIT OR Apache-2.0 OR ISC"
