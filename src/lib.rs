@@ -209,8 +209,8 @@ pub fn readpassphrase<'a>(
 /// Reads a passphrase using `readpassphrase(3)`, returning a [`String`].
 ///
 /// Internally, this function uses a buffer of [`PASSWORD_LEN`] bytes, allowing for passwords up to
-/// `PASSWORD_LEN - 1` characters (accounting for the C NUL terminator.) If the entered passphrase
-/// is longer, it will be truncated to the maximum length.
+/// `PASSWORD_LEN - 1` characters (accounting for the C NUL terminator.) Any additional characters
+/// and the terminating newline are discarded.
 ///
 /// # Errors
 /// Returns [`Err`] if `readpassphrase(3)` itself failed or if the entered password is not UTF-8.
