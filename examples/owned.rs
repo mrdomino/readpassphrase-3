@@ -8,13 +8,22 @@ fn main() -> Result<(), Error> {
     );
     let mut buf = buf.take();
     loop {
-        let mut res =
-            readpassphrase_into(c"Confirmation: ", buf.take().unwrap(), Flags::REQUIRE_TTY)?;
-        if *pass == res {
-            res.zeroize();
-            break;
-        }
-        buf = Some(res.into_bytes());
+        buf = Some(
+            match readpassphrase_into(c"Confirmation: ", buf.take().unwrap(), Flags::REQUIRE_TTY) {
+                Ok(mut s) if *pass == s => {
+                    s.zeroize();
+                    break;
+                }
+                Ok(s) => s.into_bytes(),
+                Err(e) => match e.error() {
+                    Error::Io(_) => return Err(e.into()),
+                    Error::Utf8(_) => {
+                        eprintln!("decode error: {e}");
+                        e.into_bytes()
+                    }
+                },
+            },
+        );
     }
     Ok(())
 }
