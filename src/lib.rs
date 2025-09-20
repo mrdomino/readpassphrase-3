@@ -499,6 +499,7 @@ mod tests {
     fn test_zeroize() {
         let mut buf = "test".to_string();
         buf.zeroize();
+        assert_eq!(0, buf.len());
         unsafe { buf.as_mut_vec().set_len(4) };
         assert_eq!("\0\0\0\0", &buf);
         let mut buf = vec![1u8; 15];
