@@ -450,7 +450,7 @@ mod our_zeroize {
 }
 
 #[cfg(use_tcm)]
-pub(crate) use tcm_readpassphrase_vendored as ffi;
+use tcm_readpassphrase_vendored as ffi;
 #[cfg(not(use_tcm))]
 mod ffi {
     use std::ffi::{c_char, c_int};
