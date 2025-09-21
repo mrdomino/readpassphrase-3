@@ -117,7 +117,7 @@ pub use zeroize::Zeroize;
 /// [`getpass`] is 255.
 pub const PASSWORD_LEN: usize = 256;
 
-/// Maximum capacity to use with `readpassphrase_into`.
+/// Maximum capacity to use with [`readpassphrase_into`].
 ///
 /// Vectors with allocations larger than this will only have their capacity used up to this limit.
 /// (The initialized portion of the input vector is always used regardless of size.)
