@@ -31,7 +31,7 @@ jobs:
       - name: install libbsd
         if: ${{ matrix.libbsd }}
         run: sudo sh -c 'apt-get update && apt-get -y install libbsd-dev'
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -49,7 +49,7 @@ jobs:
     name: cargo fmt && cargo clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy,rustfmt
@@ -65,7 +65,7 @@ jobs:
     needs: [build, lint]
     environment: crates-io
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: cargo generate-lockfile && cat Cargo.lock
       - run: cargo publish --dry-run
       - uses: rust-lang/crates-io-auth-action@v1
