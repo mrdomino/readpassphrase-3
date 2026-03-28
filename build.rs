@@ -9,17 +9,17 @@ fn main() {
     }
 
     let target_os = env_var_os("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    if target_os == "windows" {
-        let _witness = env_var_os("CARGO_FEATURE_WINDOWS_VENDORED");
-    }
-    // Needs to be a cfg directive since cc is an optional build dependency with these conditions.
-    #[cfg(all(target_os = "windows", feature = "windows-vendored"))]
-    {
-        cc::Build::new()
-            .file("csrc/read-password-w32.c")
-            .compile("read-password-w32");
-        println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
-        println!("cargo:rustc-cfg=raw_ffi");
+    if target_os == "windows" && env_var_os("CARGO_FEATURE_WINDOWS_VENDORED").is_some() {
+        // Needs to be a cfg directive since cc is an optional build dependency with these
+        // conditions.
+        #[cfg(all(target_os = "windows", feature = "windows-vendored"))]
+        {
+            cc::Build::new()
+                .file("csrc/read-password-w32.c")
+                .compile("read-password-w32");
+            println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
+            println!("cargo:rustc-cfg=raw_ffi");
+        }
         return;
     }
 
