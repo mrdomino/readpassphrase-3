@@ -455,7 +455,7 @@ use libbsd_sys as ffi;
 mod ffi {
     use std::ffi::{c_char, c_int};
 
-    extern "C" {
+    unsafe extern "C" {
         pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
