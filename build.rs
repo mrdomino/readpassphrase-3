@@ -17,13 +17,13 @@ fn main() {
             cc::Build::new()
                 .file("csrc/read-password-w32.c")
                 .compile("read-password-w32");
-            println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
-            println!("cargo:rustc-cfg=raw_ffi");
         }
+        println!("cargo:rerun-if-changed=csrc/read-password-w32.c");
+        println!("cargo:rustc-cfg=raw_ffi");
         return;
     }
 
-    if env_var_os("CARGO_FEATURE_LIBBSD").is_some() {
+    if target_os != "windows" && env_var_os("CARGO_FEATURE_LIBBSD").is_some() {
         return;
     }
 
