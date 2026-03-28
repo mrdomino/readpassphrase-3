@@ -449,9 +449,9 @@ mod our_zeroize {
     }
 }
 
-#[cfg(use_tcm)]
-use tcm_readpassphrase_vendored as ffi;
-#[cfg(not(use_tcm))]
+#[cfg(not(raw_ffi))]
+use libbsd_sys as ffi;
+#[cfg(raw_ffi)]
 mod ffi {
     use std::ffi::{c_char, c_int};
 

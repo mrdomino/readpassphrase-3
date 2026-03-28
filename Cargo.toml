@@ -1,6 +1,6 @@
 [package]
 name = "readpassphrase-3"
-version = "1.0.2"
+version = "2.0.0"
 categories = ["command-line-interface"]
 documentation = "https://docs.rs/readpassphrase-3"
 edition = "2021"
@@ -30,20 +30,19 @@ path = "examples/inplace.rs"
 name = "owned"
 path = "examples/owned.rs"
 
+# See README.md for description of features.
 [features]
-default = ["linux-vendored", "windows-vendored"]
+default = ["libbsd-static", "windows-vendored"]
 external = []
-libbsd-static = []
-linux-vendored = ["dep:tcm-readpassphrase-vendored"]
+libbsd = ["dep:libbsd-sys"]
+libbsd-static = ["libbsd", "libbsd-sys/static"]
 windows-vendored = ["dep:cc"]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
 bitflags = "2"
+libbsd-sys = { version = "0.1", optional = true }
 zeroize = { version = "1", optional = true }
-
-[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
-tcm-readpassphrase-vendored = { version = "0.2", optional = true }
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
 cc = { version = "1", optional = true }
@@ -53,5 +52,4 @@ zeroize = "1"
 
 [package.metadata.docs.rs]
 features = ["external", "zeroize"]
-# XXX cc is crashing on mac and windows on docs.rs
 no-default-features = true
