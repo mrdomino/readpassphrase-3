@@ -16,10 +16,10 @@ cargo add readpassphrase-3 -F zeroize
 See <https://docs.rs/readpassphrase-3> for documentation and examples.
 
 # Crate Features
-- `linux-vendored`, enabled by default, uses (on non-Windows and non-macOS) the bundled BSD readpassphrase source from the first-party [`tcm-readpassphrase-vendored`][5] crate, shipped separately so as to not subject this crate to the (permissive) ISC license.
-- `windows-vendored`, also enabled by default, uses (on Windows only) a bundled readpassphrase implementation from the public domain.
 - `external` tells Rust to expect a `readpassphrase` implementation to be provided externally (e.g. by an external build system like Bazel); this crate will not complain if it does not find one in the build script.
-- `libbsd-static` uses `readpassphrase` from the `libbsd` system library statically, i.e. without incurring a runtime dependency.
+- `libbsd` uses `readpassphrase` from [`libbsd-sys`] on platforms where it is available (non-Windows). On Linux, this incurs a build dependency on the system `libbsd` development package, and also a runtime dependency on the system `libbsd` package unless the `libbsd-sys/static` feature is enabled.
+- `libbsd-static` uses `readpassphrase` from [`libbsd-sys`] with static linkage, incurring a build-time dependency on the system `libbsd` development package, but no runtime dependency.
+- `windows-vendored` uses (on Windows only) a bundled readpassphrase implementation from the public domain.
 - `zeroize` uses [`zeroize`][3] to zero memory internally (otherwise a minimal in-crate version is used.)
 
 # NFAQ
@@ -58,3 +58,4 @@ There is already an unmaintained [`readpassphrase`][8] crate that was not to my 
 [7]: https://doc.rust-lang.org/std/ffi/struct.CString.html
 [8]: https://crates.io/crates/readpassphrase
 [9]: https://man7.org/linux/man-pages/man7/man-pages.7.html
+[10]: https://crates.io/crates/libbsd-sys
