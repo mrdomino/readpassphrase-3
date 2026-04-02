@@ -53,7 +53,11 @@ jobs:
         if: ${{ matrix.os != 'windows' && matrix.os != 'ubuntu' }}
 
       - run: cargo test --all-targets
+
       - run: cargo test --all-targets --all-features
+        # "All features" builds pull in libbsd-sys, which fails on ubuntu if
+        # libbsd-dev is not installed.
+        if: ${{ matrix.libbsd || matrix.os != 'ubuntu' }}
 
   lint:
     name: cargo fmt && cargo clippy
