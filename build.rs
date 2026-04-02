@@ -13,7 +13,7 @@ fn main() {
     let target_os = env_var_os("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
     if target_os == "windows" {
-        if env_var_os("CARGO_CFG_FEATURE_WINDOWS_VENDORED").is_some() {
+        if env_var_os("CARGO_FEATURE_WINDOWS_VENDORED").is_some() {
             // Needs to be a cfg directive since cc is an optional build dependency with these conditions.
             #[cfg(all(target_os = "windows", feature = "windows-vendored"))]
             {
