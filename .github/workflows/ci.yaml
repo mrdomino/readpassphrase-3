@@ -41,8 +41,8 @@ jobs:
           name: pass-${{ matrix.os }}-${{ matrix.toolchain }}
           path: target/debug/examples/pass${{ env.suffix }}
 
-        # "minimal" builds: either libbsd or linux-vendored on linux,
-        # windows-vendored on windows, no features on other platforms
+      # "minimal" builds: either libbsd or linux-vendored on linux,
+      # windows-vendored on windows, no features on other platforms
       - run: cargo test --all-targets --no-default-features --features=libbsd
         if: ${{ matrix.libbsd }}
       - run: cargo test --all-targets --no-default-features --features=linux-vendored
