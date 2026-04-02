@@ -41,10 +41,10 @@ fn main() {
     }
 
     if target_os == "macos"
+        || target_os == "dragonflybsd"
         || target_os == "freebsd"
         || target_os == "netbsd"
         || target_os == "openbsd"
-        || target_os == "dragonflybsd"
     {
         println!("cargo:rustc-cfg=use_external");
         return;
