@@ -25,10 +25,10 @@ fn main() {
     }
 
     if target_os == "linux" {
-        if use_linux_vendored() {
+        if use_libbsd() {
             return;
         }
-        if use_libbsd() {
+        if use_linux_vendored() {
             return;
         }
         if use_external() {
