@@ -49,9 +49,6 @@ jobs:
     name: cargo fmt && cargo clippy
     runs-on: ubuntu-latest
     steps:
-      # TODO(soon): remove, fix in libbsd-sys
-      - name: install libbsd
-        run: sudo sh -c 'apt-get update && apt-get -y install libbsd-dev'
       - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
