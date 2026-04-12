@@ -1,4 +1,4 @@
-use readpassphrase_3::{getpass, Zeroize};
+use readpassphrase_3::{Zeroize, getpass};
 
 fn main() {
     let mut password = getpass(c"Password: ").expect("failed reading password");

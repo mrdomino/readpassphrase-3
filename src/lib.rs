@@ -449,13 +449,15 @@ mod our_zeroize {
     }
 }
 
-#[cfg(use_tcm)]
-use tcm_readpassphrase_vendored as ffi;
-#[cfg(not(use_tcm))]
+#[cfg(not(target_os = "windows"))]
+mod ffi {
+    pub(crate) use libbsd_sys::readpassphrase;
+}
+#[cfg(target_os = "windows")]
 mod ffi {
     use std::ffi::{c_char, c_int};
 
-    extern "C" {
+    unsafe extern "C" {
         pub(crate) fn readpassphrase(
             prompt: *const c_char,
             buf: *mut c_char,
