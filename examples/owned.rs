@@ -1,4 +1,4 @@
-use readpassphrase_3::{readpassphrase, readpassphrase_into, Error, Flags, PASSWORD_LEN};
+use readpassphrase_3::{Error, Flags, PASSWORD_LEN, readpassphrase, readpassphrase_into};
 use zeroize::{Zeroize, Zeroizing};
 
 fn main() -> Result<(), Error> {

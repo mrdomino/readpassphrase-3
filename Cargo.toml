@@ -1,14 +1,14 @@
 [package]
 name = "readpassphrase-3"
-version = "1.0.2"
+version = "2.0.0-pre.0"
 categories = ["command-line-interface"]
 documentation = "https://docs.rs/readpassphrase-3"
-edition = "2021"
+edition = "2024"
 keywords = ["read", "password", "getpass", "passphrase", "tty"]
 license = "MIT OR Apache-2.0 OR ISC"
 readme = "README.md"
 repository = "https://github.com/mrdomino/readpassphrase-3"
-rust-version = "1.77.0"
+rust-version = "1.85.0"
 description = "Simple wrapper around readpassphrase(3)"
 
 exclude = [
@@ -31,27 +31,23 @@ name = "owned"
 path = "examples/owned.rs"
 
 [features]
-default = ["linux-vendored", "windows-vendored"]
-external = []
-libbsd-static = []
-linux-vendored = ["dep:tcm-readpassphrase-vendored"]
-windows-vendored = ["dep:cc"]
+default = ["libbsd-static"]
+libbsd-static = ["libbsd-sys/static"]
 zeroize = ["dep:zeroize"]
 
 [dependencies]
 bitflags = "2"
 zeroize = { version = "1", optional = true }
 
-[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
-tcm-readpassphrase-vendored = { version = "0.2", optional = true }
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+libbsd-sys = "0.2"
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
-cc = { version = "1", optional = true }
+cc = "1"
 
 [dev-dependencies]
 zeroize = "1"
 
 [package.metadata.docs.rs]
-features = ["external", "zeroize"]
-# XXX cc is crashing on mac and windows on docs.rs
-no-default-features = true
+features = ["zeroize"]
+default-features = false
