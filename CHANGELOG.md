@@ -1,4 +1,10 @@
 # Changelog
+## [unreleased]
+
+### 🚀 Features
+
+- [**breaking**] Use libbsd-sys for ffi where possible (#22)
+
 ## [1.0.2] - 2025-10-01
 
 ### 📚 Documentation
@@ -40,6 +46,7 @@
 ## [1.0.0] - 2025-09-12
 - First stable release
 
+[unreleased]: https://github.com/mrdomino/readpassphrase-3/compare/v1.0.2..HEAD
 [1.0.2]: https://github.com/mrdomino/readpassphrase-3/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/mrdomino/readpassphrase-3/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/mrdomino/readpassphrase-3/tree/v1.0.0
