@@ -33,7 +33,7 @@ jobs:
       - name: install libbsd
         if: ${{ matrix.os == 'ubuntu' }}
         run: sudo sh -c 'apt-get update && apt-get -y install libbsd-dev'
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - uses: actions-rust-lang/setup-rust-toolchain@2b1f5e9b395427c92ee4e3331786ca3c37afe2d7 # v1.16.0
